@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_config.dart';
+import 'core/routing/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,44 +20,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Supabase Connectivity Test',
+    return MaterialApp.router(
+      title: 'Supabase Auth Routing',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final supabaseUrl = SupabaseConfig.url;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Supabase Connected ✅',
-              style: TextStyle(fontSize: 20),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              supabaseUrl,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+      routerConfig: AppRouter.router,
     );
   }
 }
