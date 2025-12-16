@@ -6,19 +6,35 @@ class RoleService {
   final SupabaseClient _client;
 
   Future<String> getCurrentRole() async {
-    final userId = _client.auth.currentUser?.id;
+    final user = _client.auth.currentUser;
+    final userId = user?.id;
     if (userId == null) {
       throw StateError('No authenticated user found.');
     }
 
-    final response = await _client
+    Map<String, dynamic>? row = await _client
         .from('app_users')
         .select('role')
         .eq('id', userId)
         .limit(1)
         .maybeSingle();
 
-    final role = response?['role'] as String?;
+    if (row == null) {
+      await _client.from('app_users').upsert({
+        'id': userId,
+        'email': user.email,
+        'role': 'user',
+      }, onConflict: 'id');
+
+      row = await _client
+          .from('app_users')
+          .select('role')
+          .eq('id', userId)
+          .limit(1)
+          .maybeSingle();
+    }
+
+    final role = row?['role'] as String?;
     if (role == null) {
       throw StateError('Role not found for user $userId.');
     }
@@ -26,27 +42,16 @@ class RoleService {
   }
 
   Future<void> ensureProfileExists({required String email}) async {
-    final userId = _client.auth.currentUser?.id;
+    final user = _client.auth.currentUser;
+    final userId = user?.id;
     if (userId == null) {
       throw StateError('No authenticated user found.');
     }
 
-    final existing = await _client
-        .from('app_users')
-        .select('id')
-        .eq('id', userId)
-        .limit(1)
-        .maybeSingle();
-
-    if (existing != null) {
-      return;
-    }
-
-    final name = email.split('@').first;
-    await _client.from('app_users').insert({
+    await _client.from('app_users').upsert({
       'id': userId,
+      'email': user.email ?? email,
       'role': 'user',
-      'name': name,
-    });
+    }, onConflict: 'id');
   }
 }
