@@ -11,6 +11,10 @@ class RoleService {
     if (userId == null) {
       throw StateError('No authenticated user found.');
     }
+    final userEmail = user?.email;
+    final metadataName = (user?.userMetadata?['name'] as String?)?.trim();
+    final fallbackName =
+        (metadataName != null && metadataName.isNotEmpty) ? metadataName : (user?.email?.split('@').first ?? '');
 
     Map<String, dynamic>? row = await _client
         .from('app_users')
@@ -22,7 +26,8 @@ class RoleService {
     if (row == null) {
       await _client.from('app_users').upsert({
         'id': userId,
-        'email': user.email,
+        'email': userEmail,
+        'name': fallbackName,
         'role': 'user',
       }, onConflict: 'id');
 
@@ -47,10 +52,15 @@ class RoleService {
     if (userId == null) {
       throw StateError('No authenticated user found.');
     }
+    final userEmail = user?.email ?? email;
+    final metadataName = (user?.userMetadata?['name'] as String?)?.trim();
+    final fallbackName =
+        (metadataName != null && metadataName.isNotEmpty) ? metadataName : (user?.email?.split('@').first ?? '');
 
     await _client.from('app_users').upsert({
       'id': userId,
-      'email': user.email ?? email,
+      'email': userEmail,
+      'name': fallbackName,
       'role': 'user',
     }, onConflict: 'id');
   }

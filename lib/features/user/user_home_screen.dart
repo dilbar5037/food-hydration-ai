@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/auth/auth_service.dart';
+import 'scan_meal_screen.dart';
+import 'meal_history_screen.dart';
 import 'profile_setup_screen.dart';
 
 class UserHomeScreen extends StatefulWidget {
@@ -98,6 +100,28 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
             ElevatedButton(
               onPressed: () => _signOut(context),
               child: const Text('Sign Out'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ScanMealScreen(),
+                  ),
+                );
+              },
+              child: const Text('Scan Meal'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MealHistoryScreen(),
+                  ),
+                );
+              },
+              child: const Text('Meal History'),
             ),
           ],
         ),

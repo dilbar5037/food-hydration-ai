@@ -10,6 +10,7 @@ import '../../features/admin/admin_home_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/signup_screen.dart';
 import '../../features/mentor/mentor_home_screen.dart';
+import '../../features/foods/ui/food_scan_screen.dart';
 import '../../features/user/user_home_screen.dart';
 
 class AppRouter {
@@ -76,6 +77,10 @@ class AppRouter {
         builder: (context, state) => MentorHomeScreen(
           authService: authService,
         ),
+      ),
+      GoRoute(
+        path: '/food-scan',
+        builder: (context, state) => const FoodScanScreen(),
       ),
     ],
   );
