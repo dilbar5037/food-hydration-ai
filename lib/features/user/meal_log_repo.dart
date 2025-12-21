@@ -10,9 +10,8 @@ class MealLogRepo {
   Future<Map<String, dynamic>?> findFoodByLabel(String label) async {
     final result = await _client
         .from('foods')
-        .select('id,name')
-        .eq('is_active', true)
-        .ilike('name', label)
+        .select('id,food_key,display_name')
+        .eq('food_key', label.trim())
         .maybeSingle();
     return result == null ? null : Map<String, dynamic>.from(result);
   }
@@ -20,9 +19,7 @@ class MealLogRepo {
   Future<FoodNutrition?> fetchNutrition(String foodId) async {
     final result = await _client
         .from('food_nutrition')
-        .select(
-          'basis,serving_size_g,calories_kcal,carbs_g,protein_g,fat_g',
-        )
+        .select('serving_size_g,calories_kcal,carbs_g,protein_g,fat_g')
         .eq('food_id', foodId)
         .maybeSingle();
     if (result == null) return null;

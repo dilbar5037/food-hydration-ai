@@ -1,6 +1,5 @@
 class FoodNutrition {
   const FoodNutrition({
-    this.basis,
     this.servingSizeG,
     this.caloriesKcal,
     this.carbsG,
@@ -8,7 +7,6 @@ class FoodNutrition {
     this.fatG,
   });
 
-  final String? basis;
   final double? servingSizeG;
   final double? caloriesKcal;
   final double? carbsG;
@@ -24,7 +22,6 @@ class FoodNutrition {
     }
 
     return FoodNutrition(
-      basis: json['basis'] as String?,
       servingSizeG: toDouble(json['serving_size_g']),
       caloriesKcal: toDouble(json['calories_kcal']),
       carbsG: toDouble(json['carbs_g']),
@@ -37,14 +34,14 @@ class FoodNutrition {
 class Food {
   const Food({
     required this.id,
-    required this.name,
-    required this.isActive,
+    required this.foodKey,
+    required this.displayName,
     this.nutrition,
   });
 
   final String id;
-  final String name;
-  final bool isActive;
+  final String foodKey;
+  final String displayName;
   final FoodNutrition? nutrition;
 
   factory Food.fromJson(Map<String, dynamic> json) {
@@ -62,8 +59,8 @@ class Food {
 
     return Food(
       id: json['id'] as String,
-      name: json['name'] as String,
-      isActive: json['is_active'] as bool? ?? false,
+      foodKey: json['food_key'] as String? ?? '',
+      displayName: json['display_name'] as String? ?? '',
       nutrition: nutrition,
     );
   }

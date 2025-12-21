@@ -8,6 +8,9 @@ class MealHistoryItem {
     required this.servings,
     required this.eatenAt,
     this.caloriesPerServing,
+    this.carbsPerServing,
+    this.proteinPerServing,
+    this.fatPerServing,
     this.confidence,
   });
 
@@ -16,11 +19,19 @@ class MealHistoryItem {
   final double servings;
   final DateTime eatenAt;
   final double? caloriesPerServing;
+  final double? carbsPerServing;
+  final double? proteinPerServing;
+  final double? fatPerServing;
   final double? confidence;
 
   double? get totalCalories => caloriesPerServing == null
       ? null
       : caloriesPerServing! * servings;
+  double? get totalCarbs =>
+      carbsPerServing == null ? null : carbsPerServing! * servings;
+  double? get totalProtein =>
+      proteinPerServing == null ? null : proteinPerServing! * servings;
+  double? get totalFat => fatPerServing == null ? null : fatPerServing! * servings;
 }
 
 class MealHistoryScreen extends StatefulWidget {
@@ -43,7 +54,7 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
     final response = await client
         .from('meal_logs')
         .select(
-          'id, servings, eaten_at, confidence, foods(name, food_nutrition(calories_kcal))',
+          'id, servings, eaten_at, confidence, foods(display_name, food_nutrition(calories_kcal, carbs_g, protein_g, fat_g))',
         )
         .eq('user_id', userId)
         .order('eaten_at', ascending: false);
@@ -55,27 +66,35 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
       final foods = map['foods'];
       String foodName = 'Unknown food';
       double? caloriesPerServing;
+      double? carbsPerServing;
+      double? proteinPerServing;
+      double? fatPerServing;
+      double? parseNumber(dynamic value) {
+        if (value is num) {
+          return value.toDouble();
+        }
+        if (value != null) {
+          return double.tryParse(value.toString());
+        }
+        return null;
+      }
 
       if (foods is Map) {
-        foodName = foods['name'] as String? ?? foodName;
+        foodName = foods['display_name'] as String? ?? foodName;
         final nutrition = foods['food_nutrition'];
         if (nutrition is List && nutrition.isNotEmpty) {
           final first = nutrition.first;
           if (first is Map) {
-            final kcal = first['calories_kcal'];
-            if (kcal is num) {
-              caloriesPerServing = kcal.toDouble();
-            } else if (kcal != null) {
-              caloriesPerServing = double.tryParse(kcal.toString());
-            }
+            caloriesPerServing = parseNumber(first['calories_kcal']);
+            carbsPerServing = parseNumber(first['carbs_g']);
+            proteinPerServing = parseNumber(first['protein_g']);
+            fatPerServing = parseNumber(first['fat_g']);
           }
         } else if (nutrition is Map) {
-          final kcal = nutrition['calories_kcal'];
-          if (kcal is num) {
-            caloriesPerServing = kcal.toDouble();
-          } else if (kcal != null) {
-            caloriesPerServing = double.tryParse(kcal.toString());
-          }
+          caloriesPerServing = parseNumber(nutrition['calories_kcal']);
+          carbsPerServing = parseNumber(nutrition['carbs_g']);
+          proteinPerServing = parseNumber(nutrition['protein_g']);
+          fatPerServing = parseNumber(nutrition['fat_g']);
         }
       }
 
@@ -98,6 +117,9 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
         servings: servings,
         eatenAt: eatenAt ?? DateTime.now(),
         caloriesPerServing: caloriesPerServing,
+        carbsPerServing: carbsPerServing,
+        proteinPerServing: proteinPerServing,
+        fatPerServing: fatPerServing,
         confidence: confidenceRaw is num
             ? confidenceRaw.toDouble()
             : confidenceRaw == null
@@ -155,6 +177,14 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
             itemBuilder: (context, index) {
               final item = items[index];
               final totalCalories = item.totalCalories;
+              final totalCarbs = item.totalCarbs;
+              final totalProtein = item.totalProtein;
+              final totalFat = item.totalFat;
+              final carbsText =
+                  totalCarbs == null ? '--' : _formatNumber(totalCarbs);
+              final proteinText =
+                  totalProtein == null ? '--' : _formatNumber(totalProtein);
+              final fatText = totalFat == null ? '--' : _formatNumber(totalFat);
               final confidence = item.confidence;
               return ListTile(
                 title: Text(item.foodName),
@@ -164,6 +194,9 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
                     Text('Servings: ${_formatNumber(item.servings)}'),
                     if (totalCalories != null)
                       Text('Calories: ${_formatNumber(totalCalories)} kcal'),
+                    Text('Carbs: $carbsText g'),
+                    Text('Protein: $proteinText g'),
+                    Text('Fat: $fatText g'),
                     Text('Eaten at: ${_formatDateTime(item.eatenAt)}'),
                     if (confidence != null)
                       Text(

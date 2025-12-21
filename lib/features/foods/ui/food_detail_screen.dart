@@ -32,7 +32,7 @@ class FoodDetailScreen extends StatelessWidget {
     final nutrition = food.nutrition;
 
     return Scaffold(
-      appBar: AppBar(title: Text(food.name)),
+      appBar: AppBar(title: Text(food.displayName)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: nutrition == null
@@ -45,7 +45,6 @@ class FoodDetailScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 16),
-                  _buildRow('Basis', nutrition.basis ?? '--'),
                   _buildRow(
                     'Serving Size',
                     _formatNumber(nutrition.servingSizeG, unit: 'g'),

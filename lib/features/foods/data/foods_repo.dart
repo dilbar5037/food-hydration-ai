@@ -11,10 +11,9 @@ class FoodsRepo {
     final response = await _client
         .from('foods')
         .select(
-          'id,name,is_active,food_nutrition(basis,serving_size_g,calories_kcal,carbs_g,protein_g,fat_g)',
+          'id,food_key,display_name,food_nutrition(serving_size_g,calories_kcal,carbs_g,protein_g,fat_g)',
         )
-        .eq('is_active', true)
-        .order('name');
+        .order('display_name');
 
     final data = response as List<dynamic>? ?? [];
     return data

@@ -225,11 +225,6 @@ class _MealResultScreenState extends State<MealResultScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
-                      _buildRow('Basis', _nutrition?.basis ?? '--'),
-                      _buildRow(
-                        'Serving Size',
-                        _formatNumber(_nutrition?.servingSizeG, unit: 'g'),
-                      ),
                       _buildRow(
                         'Calories',
                         _formatNumber(_nutrition?.caloriesKcal, unit: 'kcal'),

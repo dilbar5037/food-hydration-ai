@@ -54,7 +54,7 @@ class _FoodListScreenState extends State<FoodListScreen> {
               final food = foods[index];
               final calories = food.nutrition?.caloriesKcal;
               return ListTile(
-                title: Text(food.name),
+                title: Text(food.displayName),
                 subtitle: calories != null
                     ? Text('Calories: ${_formatNumber(calories)} kcal')
                     : null,
