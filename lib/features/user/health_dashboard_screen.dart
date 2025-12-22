@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -186,6 +187,242 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     );
   }
 
+  double _niceInterval(double maxY) {
+    if (maxY <= 200) {
+      return 50;
+    }
+    if (maxY <= 500) {
+      return 100;
+    }
+    if (maxY <= 1000) {
+      return 200;
+    }
+    if (maxY <= 2500) {
+      return 500;
+    }
+    return 1000;
+  }
+
+  double _yAxisInterval(double maxY) {
+    return maxY <= 1000 ? 250 : 500;
+  }
+
+  Widget _buildWeeklyCaloriesChart() {
+    if (_weekDays.isEmpty || _weeklyCalories.isEmpty) {
+      return const Text('No data available');
+    }
+
+    final groups = <BarChartGroupData>[];
+    double maxY = 0;
+    for (var i = 0; i < _weekDays.length; i++) {
+      final day = _weekDays[i];
+      final value = _weeklyCalories[day] ?? 0;
+      if (value > maxY) {
+        maxY = value;
+      }
+      groups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: value,
+              width: 12,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (maxY <= 0) {
+      maxY = 1;
+    }
+
+    final interval = _yAxisInterval(maxY);
+    final roundedMaxY = (maxY / interval).ceil() * interval;
+
+    return SizedBox(
+      height: 160,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 8, right: 18),
+          child: BarChart(
+            BarChartData(
+              minY: 0,
+              maxY: roundedMaxY,
+              barGroups: groups,
+              gridData: FlGridData(show: true),
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 42,
+                    interval: interval,
+                    getTitlesWidget: (value, meta) {
+                      final isTick =
+                          (value % interval).abs() < 0.001;
+                      if (value == 0 || isTick) {
+                        return Text(value.toInt().toString());
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 34,
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (index < 0 || index >= _weekDays.length) {
+                        return const SizedBox.shrink();
+                      }
+                      const labels = [
+                        'Mon',
+                        'Tue',
+                        'Wed',
+                        'Thu',
+                        'Fri',
+                        'Sat',
+                        'Sun',
+                      ];
+                      final day = _weekDays[index];
+                      return SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        space: 6,
+                        child: Text(
+                          labels[day.weekday - 1],
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeeklyWaterChart() {
+    if (_weekDays.isEmpty || _weeklyWater.isEmpty) {
+      return const Text('No data available');
+    }
+
+    final spots = <FlSpot>[];
+    double maxY = 0;
+    for (var i = 0; i < _weekDays.length; i++) {
+      final day = _weekDays[i];
+      final value = (_weeklyWater[day] ?? 0).toDouble();
+      if (value > maxY) {
+        maxY = value;
+      }
+      spots.add(FlSpot(i.toDouble(), value));
+    }
+
+    if (maxY <= 0) {
+      maxY = 1;
+    }
+
+    final interval = _yAxisInterval(maxY);
+    final roundedMaxY = (maxY / interval).ceil() * interval;
+
+    return SizedBox(
+      height: 160,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 8, right: 18),
+          child: LineChart(
+            LineChartData(
+              minX: 0,
+              maxX: (_weekDays.length - 1).toDouble(),
+              minY: 0,
+              maxY: roundedMaxY,
+              gridData: FlGridData(show: true),
+              borderData: FlBorderData(show: false),
+              clipData: FlClipData.all(),
+              lineTouchData: LineTouchData(enabled: false),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 42,
+                    interval: interval,
+                    getTitlesWidget: (value, meta) {
+                      final isTick =
+                          (value % interval).abs() < 0.001;
+                      if (value == 0 || isTick) {
+                        return Text(value.toInt().toString());
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 34,
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (index < 0 || index >= _weekDays.length) {
+                        return const SizedBox.shrink();
+                      }
+                      const labels = [
+                        'Mon',
+                        'Tue',
+                        'Wed',
+                        'Thu',
+                        'Fri',
+                        'Sat',
+                        'Sun',
+                      ];
+                      final day = _weekDays[index];
+                      return SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        space: 6,
+                        child: Text(
+                          labels[day.weekday - 1],
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: false,
+                  barWidth: 3,
+                  dotData: FlDotData(show: false),
+                  belowBarData: BarAreaData(show: false),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -210,6 +447,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
+                      _buildWeeklyCaloriesChart(),
+                      const SizedBox(height: 12),
                       Column(
                         children: _weekDays.map((day) {
                           final label = _formatDayWithDate(day);
@@ -233,6 +472,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
+                      _buildWeeklyWaterChart(),
+                      const SizedBox(height: 12),
                       Column(
                         children: _weekDays.map((day) {
                           final label = _formatDayWithDate(day);
