@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/auth/auth_service.dart';
+import '../hydration/hydration_screen.dart';
+import 'health_dashboard_screen.dart';
 import 'scan_meal_screen.dart';
 import 'meal_history_screen.dart';
 import 'profile_setup_screen.dart';
@@ -122,6 +124,28 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                 );
               },
               child: const Text('Meal History'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const HealthDashboardScreen(),
+                  ),
+                );
+              },
+              child: const Text('Dashboard'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const HydrationScreen(),
+                  ),
+                );
+              },
+              child: const Text('Hydration'),
             ),
           ],
         ),
