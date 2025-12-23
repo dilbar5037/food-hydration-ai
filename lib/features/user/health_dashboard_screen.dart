@@ -15,6 +15,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   bool _isLoading = true;
   double _todayCalories = 0;
   int _todayWater = 0;
+  double? _weightKg;
+  String? _activityLevel;
+  bool _missingProfile = false;
   List<DateTime> _weekDays = [];
   Map<DateTime, double> _weeklyCalories = {};
   Map<DateTime, int> _weeklyWater = {};
@@ -52,6 +55,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     var todayWater = _todayWater;
     var weeklyCalories = <DateTime, double>{};
     var weeklyWater = <DateTime, int>{};
+    double? weightKg;
+    String? activityLevel;
+    var missingProfile = false;
 
     try {
       final mealRows = await _client
@@ -137,6 +143,27 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       _showSnackBar(e.toString());
     }
 
+    try {
+      final metrics = await _client
+          .from('user_metrics')
+          .select('weight_kg, activity_level')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+
+      final weightRaw = metrics?['weight_kg'];
+      weightKg = weightRaw is num
+          ? weightRaw.toDouble()
+          : double.tryParse('$weightRaw');
+      activityLevel = metrics?['activity_level'] as String?;
+      if (weightKg == null || activityLevel == null) {
+        missingProfile = true;
+      }
+    } catch (e) {
+      _showSnackBar(e.toString());
+      missingProfile = true;
+    }
+
     if (!mounted) {
       return;
     }
@@ -145,6 +172,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       _isLoading = false;
       _todayCalories = todayCalories;
       _todayWater = todayWater;
+      _weightKg = weightKg;
+      _activityLevel = activityLevel;
+      _missingProfile = missingProfile;
       _weekDays = weekDays;
       _weeklyCalories = weeklyCalories;
       _weeklyWater = weeklyWater;
@@ -205,6 +235,46 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
   double _yAxisInterval(double maxY) {
     return maxY <= 1000 ? 250 : 500;
+  }
+
+  double _waterTargetMl() {
+    final weight = _weightKg;
+    if (weight == null || weight <= 0) {
+      return 2000;
+    }
+    final base = weight * 35;
+    final level = _activityLevel;
+    final factor = level == 'high'
+        ? 1.25
+        : level == 'medium'
+            ? 1.1
+            : 1.0;
+    return (base * factor).roundToDouble();
+  }
+
+  double _calorieTargetKcal() {
+    final weight = _weightKg;
+    if (weight == null || weight <= 0) {
+      return 2000;
+    }
+    final base = weight * 30;
+    final level = _activityLevel ?? 'medium';
+    final factor = level == 'high'
+        ? 1.2
+        : level == 'low'
+            ? 1.0
+            : 1.1;
+    return base * factor;
+  }
+
+  String _complianceStatus(int score) {
+    if (score >= 80) {
+      return 'Good';
+    }
+    if (score >= 50) {
+      return 'Medium';
+    }
+    return 'Poor';
   }
 
   Widget _buildWeeklyCaloriesChart() {
@@ -441,6 +511,74 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text('Today Water: $_todayWater ml'),
+                      const SizedBox(height: 16),
+                      Builder(
+                        builder: (context) {
+                          final waterTarget = _waterTargetMl();
+                          final calorieTarget = _calorieTargetKcal();
+                          final waterScore = waterTarget <= 0
+                              ? 0.0
+                              : (_todayWater / waterTarget) * 100;
+                          final calorieScore = calorieTarget <= 0
+                              ? 0.0
+                              : (_todayCalories / calorieTarget) * 100;
+                          final compliance = ((waterScore.clamp(0, 100) +
+                                      calorieScore.clamp(0, 100)) /
+                                  2)
+                              .round();
+                          final status = _complianceStatus(compliance);
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Today Compliance: $compliance%',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              LinearProgressIndicator(
+                                value: compliance / 100,
+                                color: Theme.of(context).colorScheme.primary,
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.2),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Calories: ${_todayCalories.toStringAsFixed(0)} / ${calorieTarget.toStringAsFixed(0)} kcal',
+                              ),
+                              Text(
+                                'Water: $_todayWater / ${waterTarget.toStringAsFixed(0)} ml',
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                status,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                    ),
+                              ),
+                              if (_missingProfile) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Set profile for accurate targets',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall,
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
                       const SizedBox(height: 24),
                       Text(
                         'Weekly Calories',
