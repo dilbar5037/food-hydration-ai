@@ -11,6 +11,7 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/signup_screen.dart';
 import '../../features/mentor/mentor_home_screen.dart';
 import '../../features/foods/ui/food_scan_screen.dart';
+import '../../features/todos/data/todo_service.dart';
 import '../../features/user/user_home_screen.dart';
 
 class AppRouter {
@@ -125,6 +126,11 @@ class _RoleGateState extends State<RoleGate> {
       return 'unauthenticated';
     }
     await widget.roleService.ensureProfileExists(email: user.email ?? '');
+    try {
+      await TodoService().ensureDefaultTodosForToday();
+    } catch (_) {
+      // Skip failures to avoid blocking routing.
+    }
     return widget.roleService.getCurrentRole();
   }
 

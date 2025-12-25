@@ -2,6 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../todos/ui/today_todos_screen.dart';
+import '../reports/ui/weekly_report_screen.dart';
+import '../todos/data/todo_service.dart';
+
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
 
@@ -21,6 +25,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   List<DateTime> _weekDays = [];
   Map<DateTime, double> _weeklyCalories = {};
   Map<DateTime, int> _weeklyWater = {};
+  int _todayTodosTotal = 0;
+  int _todayTodosDone = 0;
 
   @override
   void initState() {
@@ -58,6 +64,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     double? weightKg;
     String? activityLevel;
     var missingProfile = false;
+    var todayTodosTotal = 0;
+    var todayTodosDone = 0;
 
     try {
       final mealRows = await _client
@@ -164,6 +172,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       missingProfile = true;
     }
 
+    try {
+      final todos = await TodoService().fetchTodayTodos();
+      todayTodosTotal = todos.length;
+      todayTodosDone =
+          todos.where((item) => item['is_done'] == true).length;
+    } catch (_) {}
+
     if (!mounted) {
       return;
     }
@@ -178,6 +193,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       _weekDays = weekDays;
       _weeklyCalories = weeklyCalories;
       _weeklyWater = weeklyWater;
+      _todayTodosTotal = todayTodosTotal;
+      _todayTodosDone = todayTodosDone;
     });
   }
 
@@ -506,6 +523,28 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const TodayTodosScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('Today Tasks'),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const WeeklyReportScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('Weekly Report'),
+                      ),
+                      const SizedBox(height: 16),
                       Text(
                         'Today Calories: ${_todayCalories.toStringAsFixed(0)} kcal',
                       ),
@@ -527,6 +566,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                   2)
                               .round();
                           final status = _complianceStatus(compliance);
+                          final todosPercent = _todayTodosTotal == 0
+                              ? 0
+                              : ((_todayTodosDone / _todayTodosTotal) * 100)
+                                  .round();
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,6 +597,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               Text(
                                 'Water: $_todayWater / ${waterTarget.toStringAsFixed(0)} ml',
                               ),
+                              Text('Today Tasks: $todosPercent%'),
                               const SizedBox(height: 6),
                               Text(
                                 status,
