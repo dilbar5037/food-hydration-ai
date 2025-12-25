@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/utils/safe_unawaited.dart';
+import '../foods/data/services/food_scan_log_service.dart';
 import 'meal_result_screen.dart';
 import 'ml/predictor_service.dart';
 
@@ -14,6 +16,7 @@ class ScanMealScreen extends StatefulWidget {
 class _ScanMealScreenState extends State<ScanMealScreen> {
   final ImagePicker _picker = ImagePicker();
   final PredictorService _predictor = PredictorService();
+  final FoodScanLogService _logService = FoodScanLogService();
   bool _isProcessing = false;
 
   Future<void> _pick(ImageSource source) async {
@@ -33,6 +36,18 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
 
       final prediction = await _predictor.predict(pickedFile.path);
       if (!mounted) return;
+
+      final label = prediction.label.trim();
+      if (label.isNotEmpty) {
+        safeUnawaited(
+          _logService.logScan(
+            label: label,
+            confidence: prediction.confidence,
+            imagePath: pickedFile.path,
+            dedupeKey: pickedFile.path,
+          ),
+        );
+      }
 
       await Navigator.of(context).push(
         MaterialPageRoute(

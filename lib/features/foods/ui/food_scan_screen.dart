@@ -74,23 +74,23 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
                 : prediction.label;
       });
 
-      if (prediction != null &&
-          _predictedLabel != null &&
-          _predictedLabel != 'Unknown') {
-        // Fire-and-forget to avoid blocking UI.
-        final dedupeKey =
-            '${capture.path}_${capture.byteLength ?? 0}';
-        safeUnawaited(
-          _logService.logScan(
-            label: _predictedLabel!,
-            confidence: _predictedConfidence ?? 0,
-            imagePath: capture.path,
-            dedupeKey: dedupeKey,
-          ),
-          onError: (error, st) {
-            debugPrint('Food scan log error: $error');
-          },
-        );
+      if (prediction != null) {
+        final rawLabel = prediction.label.trim();
+        if (rawLabel.isNotEmpty) {
+          // Fire-and-forget to avoid blocking UI.
+          final dedupeKey = '${capture.path}_${capture.byteLength ?? 0}';
+          safeUnawaited(
+            _logService.logScan(
+              label: rawLabel,
+              confidence: _predictedConfidence ?? 0,
+              imagePath: capture.path,
+              dedupeKey: dedupeKey,
+            ),
+            onError: (error, st) {
+              debugPrint('Food scan log error: $error');
+            },
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
