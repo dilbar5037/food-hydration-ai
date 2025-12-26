@@ -13,6 +13,7 @@ import '../../features/mentor/mentor_home_screen.dart';
 import '../../features/foods/ui/food_scan_screen.dart';
 import '../../features/todos/data/todo_service.dart';
 import '../../features/user/user_home_screen.dart';
+import '../../features/water_reminder/services/reminder_service.dart';
 
 class AppRouter {
   AppRouter._();
@@ -128,6 +129,11 @@ class _RoleGateState extends State<RoleGate> {
     await widget.roleService.ensureProfileExists(email: user.email ?? '');
     try {
       await TodoService().ensureDefaultTodosForToday();
+    } catch (_) {
+      // Skip failures to avoid blocking routing.
+    }
+    try {
+      await ReminderService().initializeReminders(user.id);
     } catch (_) {
       // Skip failures to avoid blocking routing.
     }

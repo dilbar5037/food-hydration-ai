@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../todos/ui/today_todos_screen.dart';
 import '../reports/ui/weekly_report_screen.dart';
+import '../settings/ui/water_reminder_settings_screen.dart';
 import '../todos/data/todo_service.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
@@ -543,6 +544,18 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           );
                         },
                         child: const Text('Weekly Report'),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const WaterReminderSettingsScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('Water Reminders'),
                       ),
                       const SizedBox(height: 16),
                       Text(

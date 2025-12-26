@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_service.dart';
 import '../../core/auth/role_service.dart';
+import '../water_reminder/services/reminder_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -45,6 +46,14 @@ class _LoginScreenState extends State<LoginScreen> {
           await widget.authService.signIn(email: email, password: password);
       if (response.user != null) {
         await widget.roleService.ensureProfileExists(email: email);
+        try {
+          final userId = response.user?.id;
+          if (userId != null) {
+            await ReminderService().initializeReminders(userId);
+          }
+        } catch (e) {
+          debugPrint('Reminder init failed: $e');
+        }
         if (!mounted) return;
         context.go('/');
       }

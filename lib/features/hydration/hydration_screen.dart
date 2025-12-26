@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../notifications/water_reminder_service.dart';
 import '../user/profile_setup_screen.dart';
+import '../water_reminder/services/reminder_service.dart';
 
 class HydrationScreen extends StatefulWidget {
   const HydrationScreen({super.key});
@@ -184,6 +186,16 @@ class _HydrationScreenState extends State<HydrationScreen> {
         'amount_ml': amount,
         'logged_at': DateTime.now().toIso8601String(),
       });
+      try {
+        await WaterReminderService().onWaterLogged();
+      } catch (_) {}
+      try {
+        final reminderService = ReminderService();
+        final goalMet = await reminderService.isDailyGoalMet();
+        if (goalMet) {
+          await reminderService.cancelRemainingRemindersForToday();
+        }
+      } catch (_) {}
       await _loadHydration();
     } catch (e) {
       _showSnackBar(e.toString());
