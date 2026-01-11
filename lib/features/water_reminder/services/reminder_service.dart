@@ -39,6 +39,37 @@ class ReminderService {
     }
   }
 
+  Future<void> syncMissedRemindersForToday() async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) {
+        return;
+      }
+      final reminders = await fetchUserReminders(userId);
+      final now = DateTime.now();
+      for (final reminder in reminders) {
+        if (!reminder.isActive) {
+          continue;
+        }
+        final scheduledLocal = _scheduleForToday(reminder.time);
+        if (scheduledLocal.isAfter(now)) {
+          continue;
+        }
+        // Allow a short grace window so we don't cancel near-due alarms.
+        final grace = scheduledLocal.add(const Duration(minutes: 1));
+        if (now.isBefore(grace)) {
+          continue;
+        }
+        await logMissedReminder(
+          reminder.id,
+          scheduledAt: scheduledLocal.toUtc(),
+        );
+      }
+    } catch (e) {
+      debugPrint('ReminderService syncMissed failed: $e');
+    }
+  }
+
   Future<bool> ensurePermissions() async {
     try {
       return await _notificationService.ensurePermissions();

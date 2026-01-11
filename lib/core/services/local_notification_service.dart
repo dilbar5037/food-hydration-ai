@@ -1,9 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+
+import 'android_platform_service.dart';
 
 class LocalNotificationService {
   LocalNotificationService._internal();
@@ -15,6 +15,8 @@ class LocalNotificationService {
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
+  static const String _channelId = 'water_reminders_v2';
+  static const String _channelName = 'Water Reminders';
   bool _initialized = false;
   bool _permissionGranted = false;
   bool _exactAlarmGranted = false;
@@ -26,21 +28,39 @@ class LocalNotificationService {
       }
 
       tz.initializeTimeZones();
+      await AndroidPlatformService.configureLocalTimeZone();
       const androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidSettings);
       await _notifications.initialize(initSettings);
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _channelId,
+          _channelName,
+          description: 'Daily water reminder alerts',
+          importance: Importance.high,
+        ),
+      );
 
-      if (Platform.isAndroid) {
+      final sdkInt = await AndroidPlatformService.getSdkInt();
+      if (sdkInt != null) {
+        debugPrint('Android SDK: $sdkInt');
+      }
+      if (sdkInt != null) {
         final android = _notifications
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>();
         final notificationGranted =
-            await android?.requestNotificationsPermission() ?? false;
-        final exactGranted =
-            await android?.requestExactAlarmsPermission() ?? false;
-        _permissionGranted = notificationGranted;
-        _exactAlarmGranted = exactGranted;
+            await android?.requestNotificationsPermission();
+        final exactGranted = await android?.requestExactAlarmsPermission();
+        _permissionGranted = notificationGranted ?? true;
+        if (sdkInt < 33) {
+          _permissionGranted = true;
+        }
+        _exactAlarmGranted = exactGranted ?? false;
       } else {
         _permissionGranted = true;
         _exactAlarmGranted = true;
@@ -66,13 +86,18 @@ class LocalNotificationService {
         return;
       }
 
+      if (kDebugMode) {
+        debugPrint(
+          'LocalNotificationService schedule id=$id now=${DateTime.now()} time=$time tz=${tz.local.name}',
+        );
+      }
       final details = NotificationDetails(
         android: AndroidNotificationDetails(
-          'water_reminders',
-          'Water Reminders',
+          _channelId,
+          _channelName,
           channelDescription: 'Daily water reminder alerts',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
+          importance: Importance.high,
+          priority: Priority.high,
         ),
       );
 
@@ -82,14 +107,37 @@ class LocalNotificationService {
         body,
         tz.TZDateTime.from(time, tz.local),
         details,
-        androidScheduleMode: _exactAlarmGranted
-            ? AndroidScheduleMode.exactAllowWhileIdle
-            : AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (e) {
       debugPrint('LocalNotificationService schedule failed: $e');
+    }
+  }
+
+  Future<void> showNotificationNow({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      final hasPermission = await initialize();
+      if (!hasPermission) {
+        return;
+      }
+      final details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          channelDescription: 'Daily water reminder alerts',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      );
+      await _notifications.show(id, title, body, details);
+    } catch (e) {
+      debugPrint('LocalNotificationService show failed: $e');
     }
   }
 
@@ -108,4 +156,5 @@ class LocalNotificationService {
       debugPrint('LocalNotificationService cancelAll failed: $e');
     }
   }
+
 }

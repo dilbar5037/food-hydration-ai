@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/reminder_model.dart';
@@ -15,6 +17,7 @@ class ReminderSettingsScreen extends StatefulWidget {
 
 class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
   late final ReminderProvider _provider;
+  Timer? _missedTimer;
 
   @override
   void initState() {
@@ -23,12 +26,17 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
       _provider = ReminderProvider();
       _provider.addListener(_onProviderChanged);
       _load();
+      _missedTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _provider.refreshMissed(),
+      );
     } catch (_) {}
   }
 
   @override
   void dispose() {
     try {
+      _missedTimer?.cancel();
       _provider.removeListener(_onProviderChanged);
       _provider.dispose();
     } catch (_) {}
@@ -56,7 +64,13 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
         _showSnackBar('Notification permission denied');
         return;
       }
+      final now = TimeOfDay.fromDateTime(DateTime.now());
+      final nowMinutes = now.hour * 60 + now.minute;
+      final selectedMinutes = time.hour * 60 + time.minute;
       await _provider.addReminder(time);
+      if (selectedMinutes <= nowMinutes) {
+        _showSnackBar('Time already passed today; reminder will run tomorrow.');
+      }
     } catch (_) {
       _showSnackBar('Failed to add reminder');
     }

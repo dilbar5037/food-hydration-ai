@@ -17,7 +17,7 @@ class ReminderListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     try {
-      final timeLabel = reminder.formattedTime();
+      final timeLabel = reminder.time.format(context);
       return Card(
         margin: const EdgeInsets.symmetric(vertical: 6),
         child: ListTile(

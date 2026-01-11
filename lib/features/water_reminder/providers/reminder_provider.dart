@@ -30,7 +30,9 @@ class ReminderProvider extends ChangeNotifier {
         _setLoading(false);
         return;
       }
-      _reminders = await _service.fetchUserReminders(userId);
+      final reminders = await _service.fetchUserReminders(userId);
+      _reminders = _applyPastTimeStatus(reminders);
+      await _service.syncMissedRemindersForToday();
       _missedCount = await _service.fetchMissedCount();
       _setLoading(false);
     } catch (e) {
@@ -93,11 +95,33 @@ class ReminderProvider extends ChangeNotifier {
 
   Future<void> refreshMissed() async {
     try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        return;
+      }
+      await _service.syncMissedRemindersForToday();
+      final reminders = await _service.fetchUserReminders(userId);
+      _reminders = _applyPastTimeStatus(reminders);
       _missedCount = await _service.fetchMissedCount();
       notifyListeners();
     } catch (e) {
       debugPrint('ReminderProvider refresh missed failed: $e');
     }
+  }
+
+  List<ReminderModel> _applyPastTimeStatus(List<ReminderModel> reminders) {
+    final now = TimeOfDay.fromDateTime(DateTime.now());
+    final nowMinutes = now.hour * 60 + now.minute;
+    return reminders.map((reminder) {
+      if (!reminder.isActive) {
+        return reminder;
+      }
+      final reminderMinutes = reminder.time.hour * 60 + reminder.time.minute;
+      if (reminderMinutes <= nowMinutes) {
+        return reminder.copyWith(isActive: false);
+      }
+      return reminder;
+    }).toList();
   }
 
   void _setLoading(bool value) {

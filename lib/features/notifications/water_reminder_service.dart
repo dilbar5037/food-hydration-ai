@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'water_reminder_repository.dart';
+import '../../core/services/android_platform_service.dart';
 
 class WaterReminderService {
   WaterReminderService._internal();
@@ -16,6 +17,8 @@ class WaterReminderService {
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
+  static const String _channelId = 'water_reminders_v2';
+  static const String _channelName = 'Water Reminders';
   final WaterReminderRepository _repository = WaterReminderRepository();
   bool _initialized = false;
 
@@ -121,10 +124,22 @@ class WaterReminderService {
       return;
     }
     tz.initializeTimeZones();
+    await AndroidPlatformService.configureLocalTimeZone();
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
     await _notifications.initialize(initSettings);
+    final androidPlugin = _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _channelId,
+        _channelName,
+        description: 'Daily water reminder alerts',
+        importance: Importance.high,
+      ),
+    );
     _initialized = true;
   }
 
@@ -134,11 +149,11 @@ class WaterReminderService {
   }) async {
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        'water_reminders',
-        'Water Reminders',
+        _channelId,
+        _channelName,
         channelDescription: 'Daily water reminder alerts',
-        importance: Importance.defaultImportance,
-        priority: Priority.defaultPriority,
+        importance: Importance.high,
+        priority: Priority.high,
       ),
     );
 
@@ -148,7 +163,7 @@ class WaterReminderService {
       'Log some water to stay on track.',
       tz.TZDateTime.from(scheduledLocal, tz.local),
       details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
@@ -260,6 +275,7 @@ class WaterReminderService {
     }
     return null;
   }
+
 }
 
 class _ParsedTime {
