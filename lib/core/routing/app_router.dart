@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/auth/auth_service.dart';
 import '../../core/auth/role_service.dart';
+import '../../core/services/network_service.dart';
 import '../../features/admin/admin_home_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/signup_screen.dart';
@@ -114,6 +116,7 @@ class RoleGate extends StatefulWidget {
 
 class _RoleGateState extends State<RoleGate> {
   late Future<String> _roleFuture;
+  final NetworkService _networkService = NetworkService();
 
   @override
   void initState() {
@@ -122,22 +125,45 @@ class _RoleGateState extends State<RoleGate> {
   }
 
   Future<String> _resolveRole() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      return 'unauthenticated';
-    }
-    await widget.roleService.ensureProfileExists(email: user.email ?? '');
     try {
-      await TodoService().ensureDefaultTodosForToday();
+      final hasInternet = await _networkService.hasNetwork();
+      if (!hasInternet) {
+        throw StateError(
+          'No internet connection. Please check your network and retry.',
+        );
+      }
     } catch (_) {
-      // Skip failures to avoid blocking routing.
+      throw StateError(
+        'No internet connection. Please check your network and retry.',
+      );
     }
+
     try {
-      await ReminderService().initializeReminders(user.id);
-    } catch (_) {
-      // Skip failures to avoid blocking routing.
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        return 'unauthenticated';
+      }
+      await widget.roleService.ensureProfileExists(email: user.email ?? '');
+      try {
+        await TodoService().ensureDefaultTodosForToday();
+      } catch (_) {
+        // Skip failures to avoid blocking routing.
+      }
+      try {
+        await ReminderService().initializeReminders(user.id);
+      } catch (_) {
+        // Skip failures to avoid blocking routing.
+      }
+      return await widget.roleService.getCurrentRole();
+    } on AuthRetryableFetchException {
+      throw StateError(
+        'Unable to connect. Please check your internet and retry.',
+      );
+    } on SocketException {
+      throw StateError(
+        'Unable to connect. Please check your internet and retry.',
+      );
     }
-    return widget.roleService.getCurrentRole();
   }
 
   @override

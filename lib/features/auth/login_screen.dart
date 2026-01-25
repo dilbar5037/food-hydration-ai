@@ -1,8 +1,14 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/auth/auth_service.dart';
 import '../../core/auth/role_service.dart';
+import '../../core/services/network_service.dart';
 import '../water_reminder/services/reminder_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,6 +28,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final NetworkService _networkService = NetworkService();
   bool _isLoading = false;
   String? _errorMessage;
   bool _obscurePassword = true;
@@ -51,6 +58,21 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    try {
+      final hasNetwork = await _networkService.hasNetwork();
+      if (!hasNetwork) {
+        _showError(
+          'No internet / Supabase unreachable. Please check connection and retry.',
+        );
+        return;
+      }
+    } catch (_) {
+      _showError(
+        'No internet / Supabase unreachable. Please check connection and retry.',
+      );
+      return;
+    }
+
     setState(() => _errorMessage = null);
     setState(() => _isLoading = true);
     try {
@@ -71,11 +93,25 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showError(e.toString());
+      _showError(_friendlyError(e));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  String _friendlyError(Object error) {
+    try {
+      if (error is AuthRetryableFetchException ||
+          error is SocketException ||
+          error is http.ClientException ||
+          error is TimeoutException) {
+        return 'No internet / Supabase unreachable. Please check connection and retry.';
+      }
+      return error.toString();
+    } catch (_) {
+      return 'No internet / Supabase unreachable. Please check connection and retry.';
     }
   }
 
