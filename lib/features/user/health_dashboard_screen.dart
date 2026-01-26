@@ -1,7 +1,16 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../ui/components/app_card.dart';
+import '../../ui/components/dashboard_action_row.dart';
+import '../../ui/components/dashboard_metric_pill.dart';
+import '../../ui/components/section_header.dart';
+import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/app_spacing.dart';
 import '../todos/ui/today_todos_screen.dart';
 import '../reports/ui/weekly_report_screen.dart';
 import '../settings/ui/water_reminder_settings_screen.dart';
@@ -77,7 +86,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           .lt('eaten_at', endOfDay.toIso8601String());
 
       for (final row in mealRows) {
-        final map = Map<String, dynamic>.from(row as Map);
+        if (row is! Map) {
+          continue;
+        }
+        final map = Map<String, dynamic>.from(row);
         final servingsRaw = map['servings'];
         final servings = servingsRaw is num
             ? servingsRaw.toDouble()
@@ -95,14 +107,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         double? caloriesPerServing;
         final foods = map['foods'];
         if (foods is Map) {
-          final nutrition = foods['food_nutrition'];
+          final foodMap = Map<String, dynamic>.from(foods);
+          final nutrition = foodMap['food_nutrition'];
           if (nutrition is List && nutrition.isNotEmpty) {
             final first = nutrition.first;
             if (first is Map) {
-              caloriesPerServing = _parseNumber(first['calories_kcal']);
+              final nutritionMap = Map<String, dynamic>.from(first);
+              caloriesPerServing =
+                  _parseNumber(nutritionMap['calories_kcal']);
             }
           } else if (nutrition is Map) {
-            caloriesPerServing = _parseNumber(nutrition['calories_kcal']);
+            final nutritionMap = Map<String, dynamic>.from(nutrition);
+            caloriesPerServing =
+                _parseNumber(nutritionMap['calories_kcal']);
           }
         }
 
@@ -125,7 +142,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           .lt('logged_at', endOfDay.toIso8601String());
 
       for (final row in waterRows) {
-        final map = Map<String, dynamic>.from(row as Map);
+        if (row is! Map) {
+          continue;
+        }
+        final map = Map<String, dynamic>.from(row);
         final amountRaw = map['amount_ml'];
         final amount =
             amountRaw is num ? amountRaw.toInt() : int.tryParse('$amountRaw');
@@ -149,7 +169,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       todayCalories = weeklyCalories[startOfDay] ?? 0;
       todayWater = weeklyWater[startOfDay] ?? 0;
     } catch (e) {
-      _showSnackBar(e.toString());
+      _showSnackBar(_friendlySnack(e));
     }
 
     try {
@@ -169,7 +189,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         missingProfile = true;
       }
     } catch (e) {
-      _showSnackBar(e.toString());
+      _showSnackBar(_friendlySnack(e));
       missingProfile = true;
     }
 
@@ -226,6 +246,35 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return '$label ($dd-$mm-$yyyy)';
   }
 
+  String _formatTodayDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const weekdays = [
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ];
+    final month = months[date.month - 1];
+    final weekday = weekdays[date.weekday - 1];
+    return '$weekday, $month ${date.day}';
+  }
+
   void _showSnackBar(String message) {
     if (!mounted) {
       return;
@@ -233,6 +282,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  String _friendlySnack(Object error) {
+    if (error is AuthRetryableFetchException ||
+        error is SocketException ||
+        error is TimeoutException) {
+      return "Couldn't load dashboard. Check internet and retry.";
+    }
+    return "Couldn't load dashboard.";
   }
 
   double _niceInterval(double maxY) {
@@ -296,10 +354,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   Widget _buildWeeklyCaloriesChart() {
-    if (_weekDays.isEmpty || _weeklyCalories.isEmpty) {
-      return const Text('No data available');
-    }
-
     final groups = <BarChartGroupData>[];
     double maxY = 0;
     for (var i = 0; i < _weekDays.length; i++) {
@@ -329,84 +383,97 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     final interval = _yAxisInterval(maxY);
     final roundedMaxY = (maxY / interval).ceil() * interval;
 
-    return SizedBox(
-      height: 160,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Padding(
-          padding: const EdgeInsets.only(left: 8, right: 18),
-          child: BarChart(
-            BarChartData(
-              minY: 0,
-              maxY: roundedMaxY,
-              barGroups: groups,
-              gridData: FlGridData(show: true),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 42,
-                    interval: interval,
-                    getTitlesWidget: (value, meta) {
-                      final isTick =
-                          (value % interval).abs() < 0.001;
-                      if (value == 0 || isTick) {
-                        return Text(value.toInt().toString());
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ),
-                rightTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 34,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= _weekDays.length) {
-                        return const SizedBox.shrink();
-                      }
-                      const labels = [
-                        'Mon',
-                        'Tue',
-                        'Wed',
-                        'Thu',
-                        'Fri',
-                        'Sat',
-                        'Sun',
-                      ];
-                      final day = _weekDays[index];
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        space: 6,
-                        child: Text(
-                          labels[day.weekday - 1],
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      );
-                    },
+    final allZero = _weekDays.every(
+      (day) => (_weeklyCalories[day] ?? 0) == 0,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 160,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8, right: 18),
+              child: BarChart(
+                BarChartData(
+                  minY: 0,
+                  maxY: roundedMaxY,
+                  barGroups: groups,
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 42,
+                        interval: interval,
+                        getTitlesWidget: (value, meta) {
+                          final isTick =
+                              (value % interval).abs() < 0.001;
+                          if (value == 0 || isTick) {
+                            return Text(value.toInt().toString());
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 34,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= _weekDays.length) {
+                            return const SizedBox.shrink();
+                          }
+                          const labels = [
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                            'Sun',
+                          ];
+                          final day = _weekDays[index];
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            space: 6,
+                            child: Text(
+                              labels[day.weekday - 1],
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
-      ),
+        if (allZero)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, top: 8),
+            child: Text(
+              'No logs this week yet',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+      ],
     );
   }
 
   Widget _buildWeeklyWaterChart() {
-    if (_weekDays.isEmpty || _weeklyWater.isEmpty) {
-      return const Text('No data available');
-    }
-
     final spots = <FlSpot>[];
     double maxY = 0;
     for (var i = 0; i < _weekDays.length; i++) {
@@ -425,145 +492,284 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     final interval = _yAxisInterval(maxY);
     final roundedMaxY = (maxY / interval).ceil() * interval;
 
-    return SizedBox(
-      height: 160,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Padding(
-          padding: const EdgeInsets.only(left: 8, right: 18),
-          child: LineChart(
-            LineChartData(
-              minX: 0,
-              maxX: (_weekDays.length - 1).toDouble(),
-              minY: 0,
-              maxY: roundedMaxY,
-              gridData: FlGridData(show: true),
-              borderData: FlBorderData(show: false),
-              clipData: FlClipData.all(),
-              lineTouchData: LineTouchData(enabled: false),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 42,
-                    interval: interval,
-                    getTitlesWidget: (value, meta) {
-                      final isTick =
-                          (value % interval).abs() < 0.001;
-                      if (value == 0 || isTick) {
-                        return Text(value.toInt().toString());
-                      }
-                      return const SizedBox.shrink();
-                    },
+    final allZero = _weekDays.every(
+      (day) => (_weeklyWater[day] ?? 0) == 0,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 160,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8, right: 18),
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: (_weekDays.length - 1).toDouble(),
+                  minY: 0,
+                  maxY: roundedMaxY,
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: false),
+                  clipData: FlClipData.all(),
+                  lineTouchData: LineTouchData(enabled: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 42,
+                        interval: interval,
+                        getTitlesWidget: (value, meta) {
+                          final isTick =
+                              (value % interval).abs() < 0.001;
+                          if (value == 0 || isTick) {
+                            return Text(value.toInt().toString());
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 34,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= _weekDays.length) {
+                            return const SizedBox.shrink();
+                          }
+                          const labels = [
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                            'Sun',
+                          ];
+                          final day = _weekDays[index];
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            space: 6,
+                            child: Text(
+                              labels[day.weekday - 1],
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
-                rightTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 34,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= _weekDays.length) {
-                        return const SizedBox.shrink();
-                      }
-                      const labels = [
-                        'Mon',
-                        'Tue',
-                        'Wed',
-                        'Thu',
-                        'Fri',
-                        'Sat',
-                        'Sun',
-                      ];
-                      final day = _weekDays[index];
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        space: 6,
-                        child: Text(
-                          labels[day.weekday - 1],
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      );
-                    },
-                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: false,
+                      barWidth: 3,
+                      dotData: FlDotData(show: false),
+                      belowBarData: BarAreaData(show: false),
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
                 ),
               ),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: false,
-                  barWidth: 3,
-                  dotData: FlDotData(show: false),
-                  belowBarData: BarAreaData(show: false),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
             ),
           ),
         ),
-      ),
+        if (allZero)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, top: 8),
+            child: Text(
+              'No logs this week yet',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final formattedCalories = _todayCalories > 0
+        ? _todayCalories.toStringAsFixed(0)
+        : '--';
+    final formattedWater = _todayWater > 0 ? _todayWater.toString() : '--';
+    final todosPercent = _todayTodosTotal == 0
+        ? 0
+        : ((_todayTodosDone / _todayTodosTotal) * 100).round();
+    final todosValue =
+        _todayTodosTotal == 0 ? '--' : '$todosPercent';
+    final todayLabel = _formatTodayDate(DateTime.now());
+
     return Scaffold(
       appBar: AppBar(title: const Text('Health Dashboard')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFF0FDFA),
+                AppColors.background,
+              ],
+            ),
+          ),
           child: _isLoading
-              ? const CircularProgressIndicator()
+              ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const TodayTodosScreen(),
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
-                          );
-                        },
-                        child: const Text('Today Tasks'),
-                      ),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const WeeklyReportScreen(),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              todayLabel,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                          );
-                        },
-                        child: const Text('Weekly Report'),
-                      ),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const WaterReminderSettingsScreen(),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Today overview',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                          );
-                        },
-                        child: const Text('Water Reminders'),
+                            const SizedBox(height: AppSpacing.lg),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final columns =
+                                    constraints.maxWidth >= 640 ? 3 : 2;
+                                final textScale =
+                                    MediaQuery.textScaleFactorOf(context);
+                                final pillHeight =
+                                    100 + (textScale - 1.0) * 36;
+                                final clampedPillHeight = pillHeight < 100
+                                    ? 100
+                                    : pillHeight > 180
+                                        ? 180
+                                        : pillHeight;
+                                final totalSpacing =
+                                    AppSpacing.md * (columns - 1);
+                                final itemWidth = (constraints.maxWidth -
+                                        totalSpacing) /
+                                    columns;
+                                final childRatio =
+                                    itemWidth / clampedPillHeight;
+                                final items = [
+                                  DashboardMetricPill(
+                                    label: 'Today Calories',
+                                    value: formattedCalories,
+                                    unit: 'kcal',
+                                    color: AppColors.coral,
+                                  ),
+                                  DashboardMetricPill(
+                                    label: 'Today Water',
+                                    value: formattedWater,
+                                    unit: 'ml',
+                                    color: AppColors.teal,
+                                  ),
+                                  DashboardMetricPill(
+                                    label: 'Today Tasks',
+                                    value: todosValue,
+                                    unit: '%',
+                                    color: AppColors.purple,
+                                  ),
+                                ];
+                                return GridView.count(
+                                  crossAxisCount: columns,
+                                  crossAxisSpacing: AppSpacing.md,
+                                  mainAxisSpacing: AppSpacing.md,
+                                  childAspectRatio: childRatio,
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  children: items,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Today Calories: ${_todayCalories.toStringAsFixed(0)} kcal',
+                      const SizedBox(height: AppSpacing.xl),
+                      const SectionHeader(title: 'Quick Actions'),
+                      const SizedBox(height: AppSpacing.md),
+                      AppCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            DashboardActionRow(
+                              title: 'Today Tasks',
+                              subtitle: 'View and check off tasks',
+                              icon: Icons.check_circle_outline,
+                              iconColor: AppColors.teal,
+                              iconBackground:
+                                  AppColors.teal.withValues(alpha: 0.12),
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const TodayTodosScreen(),
+                                  ),
+                                );
+                                if (mounted) {
+                                  await _loadDashboard();
+                                }
+                              },
+                              showDivider: true,
+                            ),
+                            DashboardActionRow(
+                              title: 'Weekly Report',
+                              subtitle: 'See your weekly summary',
+                              icon: Icons.bar_chart_outlined,
+                              iconColor: AppColors.coral,
+                              iconBackground:
+                                  AppColors.coral.withValues(alpha: 0.12),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const WeeklyReportScreen(),
+                                  ),
+                                );
+                              },
+                              showDivider: true,
+                            ),
+                            DashboardActionRow(
+                              title: 'Water Reminders',
+                              subtitle: 'Manage reminder schedule',
+                              icon: Icons.notifications_none,
+                              iconColor: AppColors.purple,
+                              iconBackground:
+                                  AppColors.purple.withValues(alpha: 0.12),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const WaterReminderSettingsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text('Today Water: $_todayWater ml'),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.xl),
+                      const SectionHeader(title: 'Today Compliance'),
+                      const SizedBox(height: AppSpacing.md),
                       Builder(
                         builder: (context) {
                           final waterTarget = _waterTargetMl();
@@ -584,107 +790,238 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               : ((_todayTodosDone / _todayTodosTotal) * 100)
                                   .round();
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Today Compliance: $compliance%',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 8),
-                              LinearProgressIndicator(
-                                value: compliance / 100,
-                                color: Theme.of(context).colorScheme.primary,
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.2),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Calories: ${_todayCalories.toStringAsFixed(0)} / ${calorieTarget.toStringAsFixed(0)} kcal',
-                              ),
-                              Text(
-                                'Water: $_todayWater / ${waterTarget.toStringAsFixed(0)} ml',
-                              ),
-                              Text('Today Tasks: $todosPercent%'),
-                              const SizedBox(height: 6),
-                              Text(
-                                status,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelLarge
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary,
-                                    ),
-                              ),
-                              if (_missingProfile) ...[
-                                const SizedBox(height: 6),
+                          final statusColor = compliance >= 80
+                              ? AppColors.teal
+                              : compliance >= 50
+                                  ? AppColors.coral
+                                  : AppColors.pink;
+
+                          return AppCard(
+                            padding: const EdgeInsets.all(AppSpacing.xl),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  'Set profile for accurate targets',
+                                  'Today Compliance: $compliance%',
                                   style: Theme.of(context)
                                       .textTheme
-                                      .bodySmall,
+                                      .titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
+                                const SizedBox(height: AppSpacing.sm),
+                                LinearProgressIndicator(
+                                  value: compliance / 100,
+                                  color: statusColor,
+                                  backgroundColor:
+                                      statusColor.withValues(alpha: 0.15),
+                                  minHeight: 8,
+                                ),
+                                const SizedBox(height: AppSpacing.lg),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.local_fire_department_outlined,
+                                          size: 16,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Text(
+                                          'Calories',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      '${_todayCalories.toStringAsFixed(0)} / ${calorieTarget.toStringAsFixed(0)} kcal',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.water_drop_outlined,
+                                          size: 16,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Text(
+                                          'Water',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      '$_todayWater / ${waterTarget.toStringAsFixed(0)} ml',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 16,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Text(
+                                          'Tasks',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      '$todosPercent%',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.md,
+                                    vertical: AppSpacing.xs,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    status,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: statusColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ),
+                                if (_missingProfile) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Text(
+                                    'Set profile for accurate targets',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           );
                         },
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Weekly Calories',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildWeeklyCaloriesChart(),
-                      const SizedBox(height: 12),
-                      Column(
-                        children: _weekDays.map((day) {
-                          final label = _formatDayWithDate(day);
-                          final total =
-                              _weeklyCalories[day]?.toStringAsFixed(0) ?? '0';
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(label),
-                                Text('$total kcal'),
-                              ],
+                      const SizedBox(height: AppSpacing.xl),
+                      const SectionHeader(title: 'Weekly Trends'),
+                      const SizedBox(height: AppSpacing.md),
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Weekly Calories',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                          );
-                        }).toList(),
+                            const SizedBox(height: AppSpacing.sm),
+                            _buildWeeklyCaloriesChart(),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Weekly Water',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildWeeklyWaterChart(),
-                      const SizedBox(height: 12),
-                      Column(
-                        children: _weekDays.map((day) {
-                          final label = _formatDayWithDate(day);
-                          final total = _weeklyWater[day] ?? 0;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(label),
-                                Text('$total ml'),
-                              ],
+                      const SizedBox(height: AppSpacing.lg),
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Weekly Water',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                          );
-                        }).toList(),
+                            const SizedBox(height: AppSpacing.sm),
+                            _buildWeeklyWaterChart(),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: AppSpacing.xl),
+                      const SectionHeader(title: 'Weekly Breakdown'),
+                      const SizedBox(height: AppSpacing.md),
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          children: List.generate(_weekDays.length, (index) {
+                            final day = _weekDays[index];
+                            final label = _formatDayWithDate(day);
+                            final calories =
+                                _weeklyCalories[day]?.toStringAsFixed(0) ?? '0';
+                            final water = _weeklyWater[day] ?? 0;
+                            return Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: AppSpacing.sm,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          label,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$calories kcal',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                      const SizedBox(width: AppSpacing.md),
+                                      Text(
+                                        '$water ml',
+                                        textAlign: TextAlign.right,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (index < _weekDays.length - 1)
+                                  const Divider(height: 1),
+                              ],
+                            );
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
                     ],
                   ),
                 ),
