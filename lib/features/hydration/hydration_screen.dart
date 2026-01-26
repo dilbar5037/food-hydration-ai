@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../ui/components/app_card.dart';
+import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/app_spacing.dart';
 import '../notifications/water_reminder_service.dart';
 import '../user/profile_setup_screen.dart';
 import '../water_reminder/services/reminder_service.dart';
@@ -12,7 +17,8 @@ class HydrationScreen extends StatefulWidget {
   State<HydrationScreen> createState() => _HydrationScreenState();
 }
 
-class _HydrationScreenState extends State<HydrationScreen> {
+class _HydrationScreenState extends State<HydrationScreen>
+    with WidgetsBindingObserver {
   final SupabaseClient _client = Supabase.instance.client;
 
   bool _isLoading = true;
@@ -21,11 +27,34 @@ class _HydrationScreenState extends State<HydrationScreen> {
   int _consumedMl = 0;
   List<_WaterLogEntry> _todayLogs = [];
   List<_WeeklyTotal> _weeklyTotals = [];
+  RealtimeChannel? _waterLogsChannel;
+  Timer? _realtimeDebounce;
+  String? _realtimeUserId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadHydration();
+    _initRealtime();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _realtimeDebounce?.cancel();
+    if (_waterLogsChannel != null) {
+      _client.removeChannel(_waterLogsChannel!);
+      _waterLogsChannel = null;
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_isLoading) {
+      _loadHydration();
+    }
   }
 
   double _activityFactor(String? level) {
@@ -40,7 +69,53 @@ class _HydrationScreenState extends State<HydrationScreen> {
     }
   }
 
+  void _initRealtime() {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      return;
+    }
+    if (_realtimeUserId == userId && _waterLogsChannel != null) {
+      return;
+    }
+    if (_waterLogsChannel != null) {
+      _client.removeChannel(_waterLogsChannel!);
+      _waterLogsChannel = null;
+    }
+    _realtimeUserId = userId;
+
+    final channel = _client.channel('water_logs_realtime_$userId');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'water_logs',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'user_id',
+        value: userId,
+      ),
+      callback: (payload) {
+        _scheduleRealtimeRefresh();
+      },
+    );
+
+    _waterLogsChannel = channel..subscribe();
+  }
+
+  void _scheduleRealtimeRefresh() {
+    if (_isLoading || _needsProfile) {
+      return;
+    }
+    _realtimeDebounce?.cancel();
+    _realtimeDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || _isLoading) {
+        return;
+      }
+      _loadHydration();
+    });
+  }
+
   Future<void> _loadHydration() async {
+    _initRealtime();
     setState(() {
       _isLoading = true;
       _needsProfile = false;
@@ -239,6 +314,334 @@ class _HydrationScreenState extends State<HydrationScreen> {
     return '$label ($dd-$mm-$yyyy)';
   }
 
+  String _formatTime(DateTime time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Widget _buildHeroCard(double progress) {
+    final percent = (progress * 100).round();
+    final statusText = percent >= 100
+        ? 'Goal met'
+        : percent >= 50
+            ? 'On track'
+            : 'Behind';
+    final statusColor = percent >= 100
+        ? AppColors.teal
+        : percent >= 50
+            ? AppColors.coral
+            : AppColors.pink;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFE0F2FE),
+            Color(0xFFF0FDFA),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hydration',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Today',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  statusText,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$_consumedMl ml',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'of $_goalMl ml',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              SizedBox(
+                width: 96,
+                height: 96,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 10,
+                      backgroundColor: Colors.white.withOpacity(0.6),
+                      color: AppColors.teal,
+                    ),
+                    Text(
+                      '$percent%',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAddButtons() {
+    return Row(
+      children: [
+        Expanded(child: _buildAddButton(100)),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(child: _buildAddButton(250)),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(child: _buildAddButton(500)),
+      ],
+    );
+  }
+
+  Widget _buildAddButton(int amount) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(18),
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.08),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => _addWater(amount),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.sm,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.water_drop_outlined,
+                size: 18,
+                color: AppColors.teal,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                '+$amount ml',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.teal,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodayLogsCard() {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Today Logs',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Text(
+                '${_todayLogs.length}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_todayLogs.isEmpty)
+            Text(
+              'No logs yet today',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _todayLogs.length,
+              separatorBuilder: (_, __) => const Divider(height: 16),
+              itemBuilder: (context, index) {
+                final entry = _todayLogs[index];
+                return Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: AppColors.teal.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.teal,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        _formatTime(entry.time),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    Text(
+                      '${entry.amountMl} ml',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklySummaryCard() {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Weekly Summary',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _weeklyTotals.length,
+            separatorBuilder: (_, __) => const Divider(height: 16),
+            itemBuilder: (context, index) {
+              final entry = _weeklyTotals[index];
+              final label = _formatDayWithDate(entry.date);
+              final ratio = _goalMl > 0
+                  ? (entry.totalMl / _goalMl).clamp(0.0, 1.0)
+                  : 0.0;
+              final percent = (ratio * 100).round();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      Text(
+                        '$percent%',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '${entry.totalMl} ml',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: ratio,
+                      minHeight: 6,
+                      backgroundColor: AppColors.border.withOpacity(0.2),
+                      color: AppColors.teal.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final progress =
@@ -246,115 +649,55 @@ class _HydrationScreenState extends State<HydrationScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Hydration')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _isLoading
-              ? const CircularProgressIndicator()
-              : _needsProfile
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Please complete your profile (weight & activity level) to enable hydration tracking.',
-                          textAlign: TextAlign.center,
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFF0FDFA),
+                AppColors.background,
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _needsProfile
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Please complete your profile (weight & activity level) to enable hydration tracking.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _openProfileSetup,
+                              child: const Text('Edit Profile'),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _openProfileSetup,
-                          child: const Text('Edit Profile'),
+                      )
+                    : SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeroCard(progress),
+                            const SizedBox(height: AppSpacing.xl),
+                            _buildQuickAddButtons(),
+                            const SizedBox(height: AppSpacing.xl),
+                            _buildTodayLogsCard(),
+                            const SizedBox(height: AppSpacing.xl),
+                            _buildWeeklySummaryCard(),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
                         ),
-                      ],
-                    )
-                  : SingleChildScrollView(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Daily Goal: $_goalMl ml'),
-                          const SizedBox(height: 8),
-                          Text('Consumed Today: $_consumedMl ml'),
-                          const SizedBox(height: 16),
-                          LinearProgressIndicator(value: progress),
-                          const SizedBox(height: 24),
-                          Wrap(
-                            spacing: 12,
-                            children: [
-                              ElevatedButton(
-                                onPressed: () => _addWater(100),
-                                child: const Text('+100ml'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => _addWater(250),
-                                child: const Text('+250ml'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => _addWater(500),
-                                child: const Text('+500ml'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Today Logs',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (_todayLogs.isEmpty)
-                            const Text('No water logs yet today')
-                          else
-                            Column(
-                              children: _todayLogs.map((entry) {
-                                final time = entry.time;
-                                final hour =
-                                    time.hour.toString().padLeft(2, '0');
-                                final minute =
-                                    time.minute.toString().padLeft(2, '0');
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text('$hour:$minute'),
-                                      Text('${entry.amountMl} ml'),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          const SizedBox(height: 24),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Weekly Summary',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Column(
-                            children: _weeklyTotals.map((entry) {
-                              final label = _formatDayWithDate(entry.date);
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(label),
-                                    Text('${entry.totalMl} ml'),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
                       ),
-                      ),
+          ),
         ),
       ),
     );
