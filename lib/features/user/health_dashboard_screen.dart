@@ -86,10 +86,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           .lt('eaten_at', endOfDay.toIso8601String());
 
       for (final row in mealRows) {
-        if (row is! Map) {
-          continue;
-        }
-        final map = Map<String, dynamic>.from(row);
+        final map = Map<String, dynamic>.from(row as Map);
         final servingsRaw = map['servings'];
         final servings = servingsRaw is num
             ? servingsRaw.toDouble()
@@ -142,10 +139,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           .lt('logged_at', endOfDay.toIso8601String());
 
       for (final row in waterRows) {
-        if (row is! Map) {
-          continue;
-        }
-        final map = Map<String, dynamic>.from(row);
+        final map = Map<String, dynamic>.from(row as Map);
         final amountRaw = map['amount_ml'];
         final amount =
             amountRaw is num ? amountRaw.toInt() : int.tryParse('$amountRaw');
@@ -293,22 +287,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return "Couldn't load dashboard.";
   }
 
-  double _niceInterval(double maxY) {
-    if (maxY <= 200) {
-      return 50;
-    }
-    if (maxY <= 500) {
-      return 100;
-    }
-    if (maxY <= 1000) {
-      return 200;
-    }
-    if (maxY <= 2500) {
-      return 500;
-    }
-    return 1000;
-  }
-
   double _yAxisInterval(double maxY) {
     return maxY <= 1000 ? 250 : 500;
   }
@@ -354,7 +332,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   Widget _buildWeeklyCaloriesChart() {
-    final groups = <BarChartGroupData>[];
     double maxY = 0;
     for (var i = 0; i < _weekDays.length; i++) {
       final day = _weekDays[i];
@@ -362,18 +339,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       if (value > maxY) {
         maxY = value;
       }
-      groups.add(
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: value,
-              width: 12,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ],
-        ),
-      );
     }
 
     if (maxY <= 0) {
@@ -383,6 +348,31 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     final interval = _yAxisInterval(maxY);
     final roundedMaxY = (maxY / interval).ceil() * interval;
 
+    final groups = <BarChartGroupData>[];
+    for (var i = 0; i < _weekDays.length; i++) {
+      final day = _weekDays[i];
+      final value = _weeklyCalories[day] ?? 0;
+      groups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: value,
+              width: 16,
+              color: AppColors.coral,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(6)),
+              backDrawRodData: BackgroundBarChartRodData(
+                show: true,
+                toY: roundedMaxY,
+                color: AppColors.border.withValues(alpha: 0.25),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final allZero = _weekDays.every(
       (day) => (_weeklyCalories[day] ?? 0) == 0,
     );
@@ -391,29 +381,42 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 160,
+          height: 176,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Padding(
-              padding: const EdgeInsets.only(left: 8, right: 18),
+              padding: const EdgeInsets.only(left: 8, right: 12, top: 6),
               child: BarChart(
                 BarChartData(
                   minY: 0,
                   maxY: roundedMaxY,
                   barGroups: groups,
-                  gridData: FlGridData(show: true),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: AppColors.border.withValues(alpha: 0.25),
+                      strokeWidth: 1,
+                    ),
+                  ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 42,
+                        reservedSize: 36,
                         interval: interval,
                         getTitlesWidget: (value, meta) {
                           final isTick =
                               (value % interval).abs() < 0.001;
                           if (value == 0 || isTick) {
-                            return Text(value.toInt().toString());
+                            return Text(
+                              value.toInt().toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            );
                           }
                           return const SizedBox.shrink();
                         },
@@ -449,7 +452,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                             space: 6,
                             child: Text(
                               labels[day.weekday - 1],
-                              style: const TextStyle(fontSize: 10),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: AppColors.textSecondary),
                             ),
                           );
                         },
@@ -500,18 +506,25 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 160,
+          height: 176,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Padding(
-              padding: const EdgeInsets.only(left: 8, right: 18),
+              padding: const EdgeInsets.only(left: 8, right: 12, top: 6),
               child: LineChart(
                 LineChartData(
                   minX: 0,
                   maxX: (_weekDays.length - 1).toDouble(),
                   minY: 0,
                   maxY: roundedMaxY,
-                  gridData: FlGridData(show: true),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: AppColors.border.withValues(alpha: 0.25),
+                      strokeWidth: 1,
+                    ),
+                  ),
                   borderData: FlBorderData(show: false),
                   clipData: FlClipData.all(),
                   lineTouchData: LineTouchData(enabled: false),
@@ -519,13 +532,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 42,
+                        reservedSize: 36,
                         interval: interval,
                         getTitlesWidget: (value, meta) {
                           final isTick =
                               (value % interval).abs() < 0.001;
                           if (value == 0 || isTick) {
-                            return Text(value.toInt().toString());
+                            return Text(
+                              value.toInt().toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            );
                           }
                           return const SizedBox.shrink();
                         },
@@ -561,7 +580,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                             space: 6,
                             child: Text(
                               labels[day.weekday - 1],
-                              style: const TextStyle(fontSize: 10),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: AppColors.textSecondary),
                             ),
                           );
                         },
@@ -572,10 +594,20 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     LineChartBarData(
                       spots: spots,
                       isCurved: false,
-                      barWidth: 3,
+                      barWidth: 3.5,
                       dotData: FlDotData(show: false),
-                      belowBarData: BarAreaData(show: false),
-                      color: Theme.of(context).colorScheme.primary,
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.teal.withValues(alpha: 0.25),
+                            AppColors.teal.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                      color: AppColors.teal,
                     ),
                   ],
                 ),
@@ -656,8 +688,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               builder: (context, constraints) {
                                 final columns =
                                     constraints.maxWidth >= 640 ? 3 : 2;
-                                final textScale =
-                                    MediaQuery.textScaleFactorOf(context);
+                                final textScale = MediaQuery
+                                    .textScalerOf(context)
+                                    .scale(1.0);
                                 final pillHeight =
                                     100 + (textScale - 1.0) * 36;
                                 final clampedPillHeight = pillHeight < 100
@@ -941,30 +974,70 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       const SectionHeader(title: 'Weekly Trends'),
                       const SizedBox(height: AppSpacing.md),
                       AppCard(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.lg,
+                          AppSpacing.lg,
+                          AppSpacing.lg,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Weekly Calories',
-                              style: Theme.of(context).textTheme.titleMedium,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Weekly Calories',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                                Text(
+                                  'kcal',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: AppSpacing.sm),
+                            const SizedBox(height: AppSpacing.md),
                             _buildWeeklyCaloriesChart(),
                           ],
                         ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       AppCard(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.lg,
+                          AppSpacing.lg,
+                          AppSpacing.lg,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Weekly Water',
-                              style: Theme.of(context).textTheme.titleMedium,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Weekly Water',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                                Text(
+                                  'ml',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: AppSpacing.sm),
+                            const SizedBox(height: AppSpacing.md),
                             _buildWeeklyWaterChart(),
                           ],
                         ),
