@@ -79,7 +79,7 @@ class ReportService {
 
       final rows = response as List<dynamic>? ?? [];
       for (final raw in rows) {
-        final map = Map<String, dynamic>.from(raw as Map);
+        final map = Map<String, dynamic>.from(raw);
         final eatenAt = _parseDateTime(map['eaten_at']);
         if (eatenAt == null) {
           continue;
@@ -125,7 +125,7 @@ class ReportService {
 
       final rows = response as List<dynamic>? ?? [];
       for (final raw in rows) {
-        final map = Map<String, dynamic>.from(raw as Map);
+        final map = Map<String, dynamic>.from(raw);
         final loggedAt = _parseDateTime(map['logged_at']);
         final amountRaw = map['amount_ml'];
         final amount = amountRaw is num
@@ -156,7 +156,7 @@ class ReportService {
 
       final rows = response as List<dynamic>? ?? [];
       for (final raw in rows) {
-        final map = Map<String, dynamic>.from(raw as Map);
+        final map = Map<String, dynamic>.from(raw);
         final todoDate = _parseDate(map['todo_date']);
         if (todoDate == null) {
           continue;
@@ -229,7 +229,7 @@ class ReportService {
           .select('value_json')
           .eq('key', 'app_defaults')
           .maybeSingle();
-      final data = response as Map<String, dynamic>?;
+      final data = response is Map<String, dynamic> ? response : null;
       final valueJson = data?['value_json'];
       if (valueJson is Map<String, dynamic>) {
         caloriesGoal = _parseNumber(valueJson['default_daily_calories_kcal']);

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -146,7 +145,7 @@ class ReminderService {
       final rows = response as List<dynamic>? ?? [];
       return rows
           .map((row) =>
-              ReminderModel.fromMap(Map<String, dynamic>.from(row as Map)))
+              ReminderModel.fromMap(Map<String, dynamic>.from(row)))
           .toList();
     } catch (e) {
       debugPrint('ReminderService fetch failed: $e');
@@ -187,7 +186,7 @@ class ReminderService {
   Future<void> updateReminder(ReminderModel reminder) async {
     try {
       await _client.from('user_reminders').update({
-        'reminder_time': reminder.formattedTime() + ':00',
+        'reminder_time': '${reminder.formattedTime()}:00',
         'is_active': reminder.isActive,
       }).eq('id', reminder.id);
     } catch (e) {
@@ -283,7 +282,7 @@ class ReminderService {
       final rows = response as List<dynamic>? ?? [];
       var total = 0;
       for (final row in rows) {
-        final amount = (row as Map)['amount_ml'];
+        final amount = row['amount_ml'];
         if (amount is num) {
           total += amount.toInt();
         }
@@ -302,7 +301,7 @@ class ReminderService {
           .select('value_json')
           .eq('key', 'app_defaults')
           .maybeSingle();
-      final data = response as Map<String, dynamic>?;
+      final data = response is Map<String, dynamic> ? response : null;
       final valueJson = data?['value_json'];
       if (valueJson is Map<String, dynamic>) {
         final water = valueJson['default_daily_water_ml'];

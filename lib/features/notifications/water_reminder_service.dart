@@ -210,7 +210,7 @@ class WaterReminderService {
     final rows = response as List<dynamic>? ?? [];
     var total = 0;
     for (final row in rows) {
-      final amount = (row as Map)['amount_ml'];
+      final amount = row['amount_ml'];
       if (amount is num) {
         total += amount.toInt();
       }
@@ -231,7 +231,7 @@ class WaterReminderService {
           .select('value_json')
           .eq('key', 'app_defaults')
           .maybeSingle();
-      final data = response as Map<String, dynamic>?;
+      final data = response is Map<String, dynamic> ? response : null;
       final valueJson = data?['value_json'];
       if (valueJson is Map<String, dynamic>) {
         final water = valueJson['default_daily_water_ml'];

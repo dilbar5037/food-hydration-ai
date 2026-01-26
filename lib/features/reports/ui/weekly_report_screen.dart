@@ -94,7 +94,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             pw.SizedBox(height: 16),
             pw.Text('Top Foods'),
             pw.SizedBox(height: 8),
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               headers: ['Food', 'Count'],
               data: topFoodsData,
             ),

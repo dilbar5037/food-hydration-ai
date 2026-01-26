@@ -20,7 +20,7 @@ class TodoService {
         .eq('todo_date', today)
         .limit(1);
 
-    if (existing is List && existing.isNotEmpty) {
+    if (existing.isNotEmpty) {
       return;
     }
 
