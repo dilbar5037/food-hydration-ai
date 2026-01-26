@@ -19,7 +19,6 @@ class LocalNotificationService {
   static const String _channelName = 'Water Reminders';
   bool _initialized = false;
   bool _permissionGranted = false;
-  bool _exactAlarmGranted = false;
 
   Future<bool> initialize() async {
     try {
@@ -55,16 +54,13 @@ class LocalNotificationService {
                 AndroidFlutterLocalNotificationsPlugin>();
         final notificationGranted =
             await android?.requestNotificationsPermission();
-        final exactGranted = await android?.requestExactAlarmsPermission();
         _permissionGranted = notificationGranted ?? true;
         if (sdkInt < 33) {
           _permissionGranted = true;
         }
-        _exactAlarmGranted = exactGranted ?? false;
-      } else {
-        _permissionGranted = true;
-        _exactAlarmGranted = true;
-      }
+    } else {
+      _permissionGranted = true;
+    }
 
       _initialized = true;
       return _permissionGranted;
