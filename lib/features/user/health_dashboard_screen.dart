@@ -37,14 +37,89 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   Map<DateTime, int> _weeklyWater = {};
   int _todayTodosTotal = 0;
   int _todayTodosDone = 0;
+  RealtimeChannel? _todosChannel;
+  Timer? _todosDebounce;
+  String? _todosRealtimeUserId;
 
   @override
   void initState() {
     super.initState();
     _loadDashboard();
+    _initTodosRealtime();
+  }
+
+  @override
+  void dispose() {
+    _todosDebounce?.cancel();
+    if (_todosChannel != null) {
+      _client.removeChannel(_todosChannel!);
+      _todosChannel = null;
+    }
+    super.dispose();
+  }
+
+  void _initTodosRealtime() {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      return;
+    }
+    if (_todosRealtimeUserId == userId && _todosChannel != null) {
+      return;
+    }
+    if (_todosChannel != null) {
+      _client.removeChannel(_todosChannel!);
+      _todosChannel = null;
+    }
+    _todosRealtimeUserId = userId;
+
+    final channel = _client.channel('user_todos_realtime_$userId');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'user_todos',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'user_id',
+        value: userId,
+      ),
+      callback: (payload) {
+        _scheduleTodosRefresh();
+      },
+    );
+
+    _todosChannel = channel..subscribe();
+  }
+
+  void _scheduleTodosRefresh() {
+    if (_isLoading) {
+      return;
+    }
+    _todosDebounce?.cancel();
+    _todosDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || _isLoading) {
+        return;
+      }
+      _loadTodayTodosOnly();
+    });
+  }
+
+  Future<void> _loadTodayTodosOnly() async {
+    try {
+      final todos = await TodoService().fetchTodayTodos();
+      if (!mounted) {
+        return;
+      }
+      final total = todos.length;
+      final done = todos.where((item) => item['is_done'] == true).length;
+      setState(() {
+        _todayTodosTotal = total;
+        _todayTodosDone = done;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadDashboard() async {
+    _initTodosRealtime();
     setState(() {
       _isLoading = true;
     });
@@ -365,7 +440,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               backDrawRodData: BackgroundBarChartRodData(
                 show: true,
                 toY: roundedMaxY,
-                color: AppColors.border.withValues(alpha: 0.25),
+                color: AppColors.border.withOpacity(0.25),
               ),
             ),
           ],
@@ -395,7 +470,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: AppColors.border.withValues(alpha: 0.25),
+                      color: AppColors.border.withOpacity(0.25),
                       strokeWidth: 1,
                     ),
                   ),
@@ -521,7 +596,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: AppColors.border.withValues(alpha: 0.25),
+                      color: AppColors.border.withOpacity(0.25),
                       strokeWidth: 1,
                     ),
                   ),
@@ -602,8 +677,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            AppColors.teal.withValues(alpha: 0.25),
-                            AppColors.teal.withValues(alpha: 0.0),
+                            AppColors.teal.withOpacity(0.25),
+                            AppColors.teal.withOpacity(0.0),
                           ],
                         ),
                       ),
@@ -752,7 +827,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               icon: Icons.check_circle_outline,
                               iconColor: AppColors.teal,
                               iconBackground:
-                                  AppColors.teal.withValues(alpha: 0.12),
+                                  AppColors.teal.withOpacity(0.12),
                               onTap: () async {
                                 await Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -771,7 +846,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               icon: Icons.bar_chart_outlined,
                               iconColor: AppColors.coral,
                               iconBackground:
-                                  AppColors.coral.withValues(alpha: 0.12),
+                                  AppColors.coral.withOpacity(0.12),
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -787,7 +862,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               icon: Icons.notifications_none,
                               iconColor: AppColors.purple,
                               iconBackground:
-                                  AppColors.purple.withValues(alpha: 0.12),
+                                  AppColors.purple.withOpacity(0.12),
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -846,7 +921,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                   value: compliance / 100,
                                   color: statusColor,
                                   backgroundColor:
-                                      statusColor.withValues(alpha: 0.15),
+                                      statusColor.withOpacity(0.15),
                                   minHeight: 8,
                                 ),
                                 const SizedBox(height: AppSpacing.lg),
@@ -943,7 +1018,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                     vertical: AppSpacing.xs,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withValues(alpha: 0.12),
+                                    color: statusColor.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
