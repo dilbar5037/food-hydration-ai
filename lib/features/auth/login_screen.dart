@@ -155,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _primaryTeal.withOpacity(0.15),
+                      _primaryTeal.withValues(alpha: 0.15),
                       Colors.transparent,
                     ],
                   ),
@@ -172,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFF06B6D4).withOpacity(0.1),
+                      const Color(0xFF06B6D4).withValues(alpha: 0.1),
                       Colors.transparent,
                     ],
                   ),
@@ -200,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: _primaryTeal.withOpacity(0.3),
+                              color: _primaryTeal.withValues(alpha: 0.3),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
