@@ -36,7 +36,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           .eq('key', 'app_defaults')
           .maybeSingle();
 
-      final data = response as Map<String, dynamic>?;
+      final data = response;
       final valueJson = data?['value_json'];
       if (valueJson is Map<String, dynamic>) {
         final calories = valueJson['default_daily_calories_kcal'];
