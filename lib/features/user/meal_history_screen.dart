@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/utils/date_time_formatter.dart';
+import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/app_radius.dart';
+import '../../ui/theme/app_spacing.dart';
+
 class MealHistoryItem {
   MealHistoryItem({
     required this.id,
@@ -129,15 +134,6 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
     }).toList();
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    final local = dateTime.toLocal();
-    final date =
-        '${local.year.toString().padLeft(4, '0')}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
-    final time =
-        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-    return '$date $time';
-  }
-
   String _formatNumber(double? value) {
     if (value == null) return '--';
     final isWhole = value % 1 == 0;
@@ -147,7 +143,12 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Meal History')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Meal History'),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+      ),
       body: FutureBuilder<List<MealHistoryItem>>(
         future: _future,
         builder: (context, snapshot) {
@@ -157,58 +158,261 @@ class _MealHistoryScreenState extends State<MealHistoryScreen> {
 
           if (snapshot.hasError) {
             return Center(
-              child: Text(
-                'Failed to load meal history: ${snapshot.error}',
-                textAlign: TextAlign.center,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  'Failed to load meal history: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.red[700],
+                      ),
+                ),
               ),
             );
           }
 
           final items = snapshot.data ?? [];
           if (items.isEmpty) {
-            return const Center(
-              child: Text('No meals logged yet.'),
+            return Center(
+              child: Text(
+                'No meals logged yet.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
             );
           }
 
-          return ListView.separated(
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.lg,
+            ),
             itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final item = items[index];
-              final totalCalories = item.totalCalories;
-              final totalCarbs = item.totalCarbs;
-              final totalProtein = item.totalProtein;
-              final totalFat = item.totalFat;
-              final carbsText =
-                  totalCarbs == null ? '--' : _formatNumber(totalCarbs);
-              final proteinText =
-                  totalProtein == null ? '--' : _formatNumber(totalProtein);
-              final fatText = totalFat == null ? '--' : _formatNumber(totalFat);
-              final confidence = item.confidence;
-              return ListTile(
-                title: Text(item.foodName),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Servings: ${_formatNumber(item.servings)}'),
-                    if (totalCalories != null)
-                      Text('Calories: ${_formatNumber(totalCalories)} kcal'),
-                    Text('Carbs: $carbsText g'),
-                    Text('Protein: $proteinText g'),
-                    Text('Fat: $fatText g'),
-                    Text('Eaten at: ${_formatDateTime(item.eatenAt)}'),
-                    if (confidence != null)
-                      Text(
-                        'Confidence: ${(confidence * 100).clamp(0, 100).toStringAsFixed(1)}%',
-                      ),
-                  ],
-                ),
-              );
+              return _buildMealCard(context, item);
             },
           );
         },
       ),
+    );
+  }
+
+  Widget _buildMealCard(BuildContext context, MealHistoryItem item) {
+    final totalCalories = item.totalCalories;
+    final totalCarbs = item.totalCarbs;
+    final totalProtein = item.totalProtein;
+    final totalFat = item.totalFat;
+    final confidence = item.confidence;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Meal name + Confidence badge
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.foodName,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Servings: ${_formatNumber(item.servings)}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (confidence != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.teal.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppColors.teal.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        '${(confidence * 100).clamp(0, 100).toStringAsFixed(1)}%',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(
+                              color: AppColors.teal,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Calories highlight
+              if (totalCalories != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.coral.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.local_fire_department_outlined,
+                        size: 18,
+                        color: AppColors.coral,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '${_formatNumber(totalCalories)} kcal',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.coral,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (totalCalories == null)
+                Text(
+                  '-- kcal',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                      ),
+                ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Nutrients row
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildNutrientChip(
+                      context,
+                      label: 'Carbs',
+                      value: '${_formatNumber(totalCarbs)} g',
+                      color: AppColors.purple,
+                    ),
+                    _buildNutrientChip(
+                      context,
+                      label: 'Protein',
+                      value: '${_formatNumber(totalProtein)} g',
+                      color: AppColors.teal,
+                    ),
+                    _buildNutrientChip(
+                      context,
+                      label: 'Fat',
+                      value: '${_formatNumber(totalFat)} g',
+                      color: AppColors.coral,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Eaten at
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule_outlined,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    DateTimeFormatter.formatDateTime(item.eatenAt),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textMuted,
+                        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNutrientChip(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ],
     );
   }
 }
