@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/app_radius.dart';
+import '../../ui/theme/app_spacing.dart';
+
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
 
@@ -143,73 +147,235 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile Setup')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Profile Setup'),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+      ),
+      body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Error Banner
               if (_error != null) ...[
-                Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: Colors.red.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.red[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.xl),
               ],
-              TextField(
+
+              // Body Metrics Section
+              Text(
+                'Health Metrics',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Age Input
+              _buildInputField(
                 controller: _ageController,
+                label: 'Age',
+                hint: 'e.g., 25',
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Age'),
+                prefixIcon: Icons.cake_outlined,
               ),
-              const SizedBox(height: 12),
-              TextField(
+              const SizedBox(height: AppSpacing.lg),
+
+              // Weight Input
+              _buildInputField(
                 controller: _weightController,
+                label: 'Weight (kg)',
+                hint: 'e.g., 60.0',
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Weight (kg)'),
+                prefixIcon: Icons.scale_outlined,
               ),
-              const SizedBox(height: 12),
-              TextField(
+              const SizedBox(height: AppSpacing.lg),
+
+              // Height Input
+              _buildInputField(
                 controller: _heightController,
+                label: 'Height (cm)',
+                hint: 'e.g., 170',
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Height (cm)'),
+                prefixIcon: Icons.height_outlined,
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _activityLevel,
-                items: const [
-                  DropdownMenuItem(value: 'low', child: Text('Low')),
-                  DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                  DropdownMenuItem(value: 'high', child: Text('High')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _activityLevel = value;
-                    });
-                  }
-                },
-                decoration:
-                    const InputDecoration(labelText: 'Activity level'),
+              const SizedBox(height: AppSpacing.xxl),
+
+              // Activity Level Section
+              Text(
+                'Activity Level',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.md),
+
+              // Activity Level Dropdown
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: DropdownButtonFormField<String>(
+                  value: _activityLevel,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'low',
+                      child: Text('Low'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'medium',
+                      child: Text('Medium'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'high',
+                      child: Text('High'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _activityLevel = value;
+                      });
+                    }
+                  },
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.lg,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.local_fire_department_outlined,
+                      color: AppColors.teal,
+                    ),
+                  ),
+                  isExpanded: true,
+                  iconSize: 24,
+                  dropdownColor: AppColors.surface,
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.xxxl),
+
+              // Save Button
               SizedBox(
                 width: double.infinity,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    disabledBackgroundColor:
+                        AppColors.teal.withOpacity(0.5),
+                  ),
                   child: _isSaving
                       ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
                         )
-                      : const Text('Save'),
+                      : Text(
+                          'Save',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.lg),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required TextInputType keyboardType,
+    required IconData prefixIcon,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: AppColors.border,
+          width: 1,
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.lg,
+          ),
+          prefixIcon: Icon(
+            prefixIcon,
+            color: AppColors.teal,
+          ),
+          hintStyle: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: AppColors.textMuted),
+          labelStyle: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: AppColors.textSecondary),
         ),
       ),
     );
