@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/auth/auth_service.dart';
 import '../../ui/components/app_card.dart';
 import '../../ui/components/app_icon_badge.dart';
@@ -37,6 +38,62 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   static const Color _textSecondary = AppColors.textSecondary;
   static const Color _textMuted = AppColors.textMuted;
 
+  late final SupabaseClient _client;
+  String _activityLevel = '--';
+  String _userName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _client = Supabase.instance.client;
+    _loadActivityLevel();
+    _loadUserName();
+  }
+
+  Future<void> _loadActivityLevel() async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final data = await _client
+          .from('user_metrics')
+          .select('activity_level')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (data != null && mounted) {
+        final level = data['activity_level'] as String?;
+        setState(() {
+          _activityLevel = level ?? '--';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading activity level: $e');
+    }
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final data = await _client
+          .from('app_users')
+          .select('name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (data != null && mounted) {
+        final name = (data['name'] as String?)?.trim() ?? '';
+        setState(() {
+          _userName = name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user name: $e');
+    }
+  }
+
   Future<void> _signOut(BuildContext context) async {
     await widget.authService.signOut();
     if (context.mounted) {
@@ -51,7 +108,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       ),
     );
     if (result == true && mounted) {
-      // No-op: keep existing flow without adding logic.
+      // Refresh activity level after profile setup
+      _loadActivityLevel();
     }
   }
 
@@ -64,6 +122,18 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       return 'Good Afternoon';
     }
     return 'Good Evening';
+  }
+
+  String _formatActivityLevel(String level) {
+    if (level == '--') return '--';
+    return level[0].toUpperCase() + level.substring(1);
+  }
+
+  String _buildWelcomeText() {
+    if (_userName.isEmpty) {
+      return 'Welcome back';
+    }
+    return 'Welcome back, $_userName';
   }
 
   @override
@@ -114,15 +184,30 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                                 ?.copyWith(color: _textSecondary),
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            'Welcome back',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: _textPrimary,
-                                ),
+                          RichText(
+                            text: TextSpan(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: _textPrimary,
+                                  ),
+                              children: [
+                                const TextSpan(text: 'Welcome back'),
+                                if (_userName.isNotEmpty)
+                                  TextSpan(
+                                    text: ', $_userName',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: _primaryTeal,
+                                        ),
+                                  ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.md),
                           Container(
@@ -135,7 +220,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              'Activity level: --',
+                              'Activity level: ${_formatActivityLevel(_activityLevel)}',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
@@ -145,11 +230,15 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                         ],
                       ),
                     ),
-                    const AppIconBadge(
-                      icon: Icons.person_outline,
-                      backgroundColor: _softPurpleLight,
-                      iconColor: _softPurple,
-                      size: 56,
+                    InkWell(
+                      onTap: _openProfileSetup,
+                      borderRadius: BorderRadius.circular(28),
+                      child: const AppIconBadge(
+                        icon: Icons.person_outline,
+                        backgroundColor: _softPurpleLight,
+                        iconColor: _softPurple,
+                        size: 56,
+                      ),
                     ),
                   ],
                 ),
@@ -370,24 +459,12 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
               const SizedBox(height: AppSpacing.md),
               AppCard(
                 padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    AppListTileCard(
-                      title: 'Edit Profile',
-                      icon: Icons.person_outline,
-                      iconColor: _softPurple,
-                      iconBackground: _softPurpleLight,
-                      onTap: _openProfileSetup,
-                      showDivider: true,
-                    ),
-                    AppListTileCard(
-                      title: 'Sign Out',
-                      icon: Icons.logout,
-                      iconColor: _softPink,
-                      iconBackground: _softPinkLight,
-                      onTap: () => _signOut(context),
-                    ),
-                  ],
+                child: AppListTileCard(
+                  title: 'Sign Out',
+                  icon: Icons.logout,
+                  iconColor: _softPink,
+                  iconBackground: _softPinkLight,
+                  onTap: () => _signOut(context),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
