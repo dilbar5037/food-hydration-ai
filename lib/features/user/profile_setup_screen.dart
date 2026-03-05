@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
+import 'package:food_hydration_ai/ui/widgets/animated_primary_button.dart';
+import 'package:food_hydration_ai/ui/feedback/success_feedback_overlay.dart';
+
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_radius.dart';
 import '../../ui/theme/app_spacing.dart';
@@ -56,10 +60,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           .maybeSingle();
 
       if (existing == null) {
-        await _client.from('user_metrics').insert({
+        await _client.from('user_metrics').upsert({
           'user_id': userId,
           'activity_level': 'low',
-        });
+        }, onConflict: 'user_id');
         _activityLevel = 'low';
       } else {
         final age = existing['age'] as int?;
@@ -68,10 +72,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final level = existing['activity_level'] as String?;
 
         _ageController.text = age?.toString() ?? '';
-        _weightController.text =
-            weight != null ? weight.toString() : '';
-        _heightController.text =
-            height != null ? height.toString() : '';
+        _weightController.text = weight != null ? weight.toString() : '';
+        _heightController.text = height != null ? height.toString() : '';
         _activityLevel = level ?? 'low';
       }
     } catch (e) {
@@ -99,10 +101,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final heightText = _heightController.text.trim();
 
     final age = ageText.isEmpty ? null : int.tryParse(ageText);
-    final weight =
-        weightText.isEmpty ? null : double.tryParse(weightText);
-    final height =
-        heightText.isEmpty ? null : double.tryParse(heightText);
+    final weight = weightText.isEmpty ? null : double.tryParse(weightText);
+    final height = heightText.isEmpty ? null : double.tryParse(heightText);
 
     setState(() {
       _isSaving = true;
@@ -110,18 +110,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     });
 
     try {
-      await _client.from('user_metrics').update({
-        'age': age,
-        'weight_kg': weight,
-        'height_cm': height,
-        'activity_level': _activityLevel,
-      }).eq('user_id', userId);
+      await _client.from('user_metrics').upsert({
+            'user_id': userId,
+            'age': age,
+            'weight_kg': weight,
+            'height_cm': height,
+            'activity_level': _activityLevel,
+          }, onConflict: 'user_id');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile saved')),
-        );
-        Navigator.of(context).pop(true);
+        final messenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
+        messenger.showSnackBar(const SnackBar(content: Text('Profile saved')));
+        try {
+          await showSuccessFeedback(context, message: 'Profile saved');
+        } catch (_) {}
+        navigator.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -141,9 +145,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: AppLoadingView());
     }
 
     return Scaffold(
@@ -168,19 +170,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(
-                      color: Colors.red.withOpacity(0.3),
+                      color: Colors.red.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
                   child: Text(
                     _error!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.red[700],
-                          fontWeight: FontWeight.w500,
-                        ),
+                      color: Colors.red[700],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -190,9 +192,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               Text(
                 'Health Metrics',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -211,8 +213,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 controller: _weightController,
                 label: 'Weight (kg)',
                 hint: 'e.g., 60.0',
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 prefixIcon: Icons.scale_outlined,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -222,8 +225,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 controller: _heightController,
                 label: 'Height (cm)',
                 hint: 'e.g., 170',
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 prefixIcon: Icons.height_outlined,
               ),
               const SizedBox(height: AppSpacing.xxl),
@@ -232,9 +236,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               Text(
                 'Activity Level',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -243,27 +247,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: AppColors.border,
-                    width: 1,
-                  ),
+                  border: Border.all(color: AppColors.border, width: 1),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: DropdownButtonFormField<String>(
                   value: _activityLevel,
                   items: const [
-                    DropdownMenuItem(
-                      value: 'low',
-                      child: Text('Low'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'medium',
-                      child: Text('Medium'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'high',
-                      child: Text('High'),
-                    ),
+                    DropdownMenuItem(value: 'low', child: Text('Low')),
+                    DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                    DropdownMenuItem(value: 'high', child: Text('High')),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -294,39 +286,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               SizedBox(
                 width: double.infinity,
                 height: 56,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.teal,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    disabledBackgroundColor:
-                        AppColors.teal.withOpacity(0.5),
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      : Text(
-                          'Save',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
+                child: AnimatedPrimaryButton(
+                  loading: _isSaving,
+                  onPressed: () async => await _save(),
+                  child: Text(
+                    'Save',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -348,10 +317,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color: AppColors.border,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: TextField(
         controller: controller,
@@ -364,18 +330,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.lg,
           ),
-          prefixIcon: Icon(
-            prefixIcon,
-            color: AppColors.teal,
-          ),
-          hintStyle: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: AppColors.textMuted),
-          labelStyle: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.textSecondary),
+          prefixIcon: Icon(prefixIcon, color: AppColors.teal),
+          hintStyle: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+          labelStyle: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
         ),
       ),
     );
