@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
+import 'package:food_hydration_ai/ui/widgets/progress_widgets.dart';
+import 'package:food_hydration_ai/ui/feedback/success_feedback_overlay.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../ui/components/app_card.dart';
@@ -255,7 +258,7 @@ class _HydrationScreenState extends State<HydrationScreen>
       return;
     }
 
-    try {
+      try {
       await _client.from('water_logs').insert({
         'user_id': userId,
         'amount_ml': amount,
@@ -272,6 +275,9 @@ class _HydrationScreenState extends State<HydrationScreen>
         }
       } catch (_) {}
       await _loadHydration();
+      try {
+        await showSuccessFeedback(context, message: 'Water logged');
+      } catch (_) {}
     } catch (e) {
       _showSnackBar(e.toString());
     }
@@ -424,24 +430,7 @@ class _HydrationScreenState extends State<HydrationScreen>
               SizedBox(
                 width: 96,
                 height: 96,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 10,
-                      backgroundColor: Colors.white.withOpacity(0.6),
-                      color: AppColors.teal,
-                    ),
-                    Text(
-                      '$percent%',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                    ),
-                  ],
-                ),
+                child: AnimatedCircularProgress(percent: progress, size: 96),
               ),
             ],
           ),
@@ -664,7 +653,7 @@ class _HydrationScreenState extends State<HydrationScreen>
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: AppLoadingView())
                 : _needsProfile
                     ? Center(
                         child: Column(

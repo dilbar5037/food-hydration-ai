@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
 
 import '../models/reminder_model.dart';
 import '../providers/reminder_provider.dart';
@@ -130,8 +131,8 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
         ),
         body: Padding(
           padding: const EdgeInsets.all(16),
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
+            child: isLoading
+              ? const Center(child: AppLoadingView())
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

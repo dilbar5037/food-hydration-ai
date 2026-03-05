@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/utils/safe_unawaited.dart';
@@ -336,10 +337,7 @@ class _PrimaryScanButton extends StatelessWidget {
                     SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: fgColor,
-                      ),
+                      child: const AppLoadingView(size: 18),
                     )
                   else
                     Icon(icon, color: fgColor, size: 22),

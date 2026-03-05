@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
 
 import '../data/todo_service.dart';
 
@@ -72,7 +73,7 @@ class _TodayTodosScreenState extends State<TodayTodosScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoadingView())
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

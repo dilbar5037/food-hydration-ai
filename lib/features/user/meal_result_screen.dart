@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
+import 'package:food_hydration_ai/ui/widgets/animated_primary_button.dart';
+import 'package:food_hydration_ai/ui/feedback/success_feedback_overlay.dart';
 
 import '../foods/models/food_models.dart';
 import 'meal_log_repo.dart';
@@ -124,6 +127,9 @@ class _MealResultScreenState extends State<MealResultScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Meal saved')),
       );
+      try {
+        await showSuccessFeedback(context, message: 'Meal saved');
+      } catch (_) {}
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (mounted) {
@@ -157,7 +163,7 @@ class _MealResultScreenState extends State<MealResultScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoadingView())
             : SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,21 +206,16 @@ class _MealResultScreenState extends State<MealResultScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Try Again'),
-                            ),
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('Try Again'),
+                              ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isSaving ? null : () => _save(foodId: null),
-                              child: _isSaving
-                                  ? const SizedBox(
-                                      height: 16,
-                                      width: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Text('Save as Unknown'),
+                            child: AnimatedPrimaryButton(
+                              loading: _isSaving,
+                              onPressed: () async => await _save(foodId: null),
+                              child: const Text('Save as Unknown'),
                             ),
                           ),
                         ],
@@ -263,16 +264,11 @@ class _MealResultScreenState extends State<MealResultScreen> {
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : () => _save(foodId: _foodId),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Confirm'),
-                        ),
+                          child: AnimatedPrimaryButton(
+                              loading: _isSaving,
+                              onPressed: () async => await _save(foodId: _foodId),
+                              child: const Text('Confirm'),
+                            ),
                       ),
                     ],
                   ],

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../ui/components/app_card.dart';
@@ -729,8 +730,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               ],
             ),
           ),
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+            child: _isLoading
+              ? const Center(child: AppLoadingView())
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Column(

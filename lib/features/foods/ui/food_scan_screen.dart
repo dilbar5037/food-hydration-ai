@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
 
 import '../../../core/utils/safe_unawaited.dart';
 import '../data/services/food_scan_log_service.dart';
@@ -170,7 +171,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
                   ? const SizedBox(
                       height: 16,
                       width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: AppLoadingView(size: 16),
                     )
                   : const Text('Capture Food Photo'),
             ),

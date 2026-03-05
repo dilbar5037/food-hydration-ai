@@ -9,6 +9,7 @@ import '../../ui/components/primary_button.dart';
 import '../../ui/components/section_header.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
+import 'package:food_hydration_ai/ui/widgets/card_interaction.dart';
 import '../hydration/hydration_screen.dart';
 import 'health_dashboard_screen.dart';
 import 'scan_meal_screen.dart';
@@ -102,11 +103,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 
   Future<void> _openProfileSetup() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const ProfileSetupScreen(),
-      ),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const ProfileSetupScreen()));
     if (result == true && mounted) {
       // Refresh activity level after profile setup
       _loadActivityLevel();
@@ -129,13 +128,6 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     return level[0].toUpperCase() + level.substring(1);
   }
 
-  String _buildWelcomeText() {
-    if (_userName.isEmpty) {
-      return 'Welcome back';
-    }
-    return 'Welcome back, $_userName';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,9 +136,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
         title: Text(
           'Wellness',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: _textPrimary,
-              ),
+            fontWeight: FontWeight.bold,
+            color: _textPrimary,
+          ),
         ),
       ),
       body: SafeArea(
@@ -155,10 +147,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFF0FDFA),
-                _bgPrimary,
-              ],
+              colors: [Color(0xFFF0FDFA), _bgPrimary],
             ),
           ),
           child: ListView(
@@ -178,17 +167,13 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                         children: [
                           Text(
                             _greetingText(),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
+                            style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: _textSecondary),
                           ),
                           const SizedBox(height: 6),
                           RichText(
                             text: TextSpan(
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
+                              style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: _textPrimary,
@@ -221,9 +206,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                             ),
                             child: Text(
                               'Activity level: ${_formatActivityLevel(_activityLevel)}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
+                              style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(color: _primaryTeal),
                             ),
                           ),
@@ -246,135 +229,132 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
               const SizedBox(height: AppSpacing.xl),
               const SectionHeader(title: 'Health', accentColor: _primaryTeal),
               const SizedBox(height: AppSpacing.md),
-              AppCard(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const HealthDashboardScreen(),
-                    ),
-                  );
-                },
-                child: Row(
-                  children: [
-                    const AppIconBadge(
-                      icon: Icons.dashboard_outlined,
-                      backgroundColor: _primaryTeal,
-                      iconColor: Colors.white,
-                      size: 48,
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Dashboard',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: _textPrimary,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            'View Health',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: _textMuted),
-                          ),
-                        ],
+              CardInteraction(
+                child: AppCard(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const HealthDashboardScreen(),
                       ),
-                    ),
-                    Icon(Icons.chevron_right, color: _textMuted),
-                  ],
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      const AppIconBadge(
+                        icon: Icons.dashboard_outlined,
+                        backgroundColor: _primaryTeal,
+                        iconColor: Colors.white,
+                        size: 48,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Dashboard',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: _textPrimary,
+                                  ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'View Health',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(color: _textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: _textMuted),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(
-                    child: AppCard(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const HydrationScreen(),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const AppIconBadge(
-                            icon: Icons.water_drop_outlined,
-                            backgroundColor: _softPurple,
-                            iconColor: Colors.white,
-                            size: 48,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            'Hydration',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: _textPrimary,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            'Track Water',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: _textMuted),
-                          ),
-                        ],
+                    child: CardInteraction(
+                      child: AppCard(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const HydrationScreen(),
+                            ),
+                          );
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const AppIconBadge(
+                              icon: Icons.water_drop_outlined,
+                              backgroundColor: _softPurple,
+                              iconColor: Colors.white,
+                              size: 48,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Hydration',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: _textPrimary,
+                                  ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Track Water',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(color: _textMuted),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: AppCard(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const MealHistoryScreen(),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const AppIconBadge(
-                            icon: Icons.history,
-                            backgroundColor: _accentCoralLight,
-                            iconColor: _accentCoral,
-                            size: 48,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            'Meal Log',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: _textPrimary,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            'View Log',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: _textMuted),
-                          ),
-                        ],
+                    child: CardInteraction(
+                      child: AppCard(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const MealHistoryScreen(),
+                            ),
+                          );
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const AppIconBadge(
+                              icon: Icons.history,
+                              backgroundColor: _accentCoralLight,
+                              iconColor: _accentCoral,
+                              size: 48,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Meal Log',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: _textPrimary,
+                                  ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'View Log',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(color: _textMuted),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -386,68 +366,68 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                 accentColor: _accentCoral,
               ),
               const SizedBox(height: AppSpacing.md),
-              AppCard(
-                padding: EdgeInsets.zero,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ScanMealScreen(),
+              CardInteraction(
+                child: AppCard(
+                  padding: EdgeInsets.zero,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ScanMealScreen()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: const LinearGradient(
+                        colors: [_primaryTeal, Color(0xFF0F766E)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(
-                      colors: [_primaryTeal, Color(0xFF0F766E)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_outlined,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          'Scan Your Meal',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Quick AI-powered food scan',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        PrimaryButton(
+                          label: 'Scan Now',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const ScanMealScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_outlined,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'Scan Your Meal',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Quick AI-powered food scan',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: Colors.white70),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      PrimaryButton(
-                        label: 'Scan Now',
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const ScanMealScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
                   ),
                 ),
               ),

@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
 import 'package:go_router/go_router.dart';
+import 'package:animations/animations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/auth/auth_service.dart';
@@ -46,45 +48,101 @@ class AppRouter {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => RoleGate(
-          roleService: roleService,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: RoleGate(roleService: roleService),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
         ),
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => LoginScreen(
-          authService: authService,
-          roleService: roleService,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: LoginScreen(authService: authService, roleService: roleService),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
         ),
       ),
       GoRoute(
         path: '/signup',
-        builder: (context, state) => SignupScreen(
-          authService: authService,
-          roleService: roleService,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: SignupScreen(authService: authService, roleService: roleService),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
         ),
       ),
       GoRoute(
         path: '/user',
-        builder: (context, state) => UserHomeScreen(
-          authService: authService,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: UserHomeScreen(authService: authService),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
         ),
       ),
       GoRoute(
         path: '/admin',
-        builder: (context, state) => AdminHomeScreen(
-          authService: authService,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: AdminHomeScreen(authService: authService),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
         ),
       ),
       GoRoute(
         path: '/mentor',
-        builder: (context, state) => MentorHomeScreen(
-          authService: authService,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: MentorHomeScreen(authService: authService),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
         ),
       ),
       GoRoute(
         path: '/food-scan',
-        builder: (context, state) => const FoodScanScreen(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const FoodScanScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
       ),
     ],
   );
@@ -222,7 +280,7 @@ class _LoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
-        child: CircularProgressIndicator(),
+        child: AppLoadingView(),
       ),
     );
   }
