@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
+import 'package:food_hydration_ai/ui/feedback/success_feedback_overlay.dart';
+import 'package:food_hydration_ai/ui/feedback/empty_state_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../foods/models/food_models.dart';
@@ -210,6 +213,10 @@ class _AdminFoodsScreenState extends State<AdminFoodsScreen> {
                 if (!mounted) return;
                 Navigator.of(dialogContext).pop();
                 _loadFoods();
+                // UI feedback (non-blocking)
+                try {
+                  showSuccessFeedback(context, message: 'Food saved');
+                } catch (_) {}
               } catch (error) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -270,11 +277,11 @@ class _AdminFoodsScreenState extends State<AdminFoodsScreen> {
                 ElevatedButton(
                   onPressed: saving ? null : handleSave,
                   child: saving
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: AppLoadingView(size: 16),
+                          )
                       : const Text('Save'),
                 ),
               ],
@@ -316,8 +323,10 @@ class _AdminFoodsScreenState extends State<AdminFoodsScreen> {
           Expanded(
             child: foods.isEmpty
                 ? Center(
-                    child: Text(
-                      _loading ? 'Loading foods...' : 'No foods found.',
+                    child: EmptyStateView(
+                      title: _loading ? 'Loading foods...' : 'No foods found',
+                      subtitle: _loading ? 'Please wait...' : 'Add a food item to get started.',
+                      fallbackIcon: Icons.restaurant_menu_outlined,
                     ),
                   )
                 : ListView.separated(
