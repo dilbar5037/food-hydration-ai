@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
+import 'package:food_hydration_ai/ui/feedback/empty_state_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminUsersScreen extends StatefulWidget {
@@ -138,7 +140,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       ? const SizedBox(
                           height: 16,
                           width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: AppLoadingView(size: 16),
                         )
                       : const Text('Save'),
                 ),
@@ -164,8 +166,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           Expanded(
             child: _users.isEmpty
                 ? Center(
-                    child:
-                        Text(_loading ? 'Loading users...' : 'No users found.'),
+                    child: EmptyStateView(
+                      title: _loading ? 'Loading users...' : 'No users found',
+                      subtitle: _loading ? 'Please wait...' : 'Users will appear here.',
+                      fallbackIcon: Icons.group_outlined,
+                    ),
                   )
                 : ListView.separated(
                     itemCount: _users.length,
