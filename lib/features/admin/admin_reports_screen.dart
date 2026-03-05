@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:food_hydration_ai/ui/feedback/empty_state_view.dart';
 
 class AdminReportsScreen extends StatefulWidget {
   const AdminReportsScreen({super.key});
@@ -294,7 +295,16 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                           ),
                           const SizedBox(height: 12),
                           if (_topScans.isEmpty)
-                            const Text('No scan logs yet')
+                            const SizedBox(
+                              height: 160,
+                              child: Center(
+                                child: EmptyStateView(
+                                  title: 'No scan logs yet',
+                                  subtitle: 'Scans will appear here.',
+                                  fallbackIcon: Icons.qr_code_2_outlined,
+                                ),
+                              ),
+                            )
                           else
                             Column(
                               children: _topScans
@@ -330,7 +340,16 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                           ),
                           const SizedBox(height: 12),
                           if (_mealLogs.isEmpty)
-                            const Text('No data')
+                            const SizedBox(
+                              height: 160,
+                              child: Center(
+                                child: EmptyStateView(
+                                  title: 'No meal logs',
+                                  subtitle: 'Meal logs will appear here.',
+                                  fallbackIcon: Icons.restaurant_outlined,
+                                ),
+                              ),
+                            )
                           else
                             Column(
                               children: _mealLogs.map((log) {
