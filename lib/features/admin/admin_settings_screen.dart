@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:food_hydration_ai/ui/feedback/success_feedback_overlay.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -88,6 +89,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Saved')));
+        try {
+          showSuccessFeedback(context, message: 'Settings saved');
+        } catch (_) {}
       }
     } catch (error) {
       if (mounted) {
