@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:food_hydration_ai/ui/widgets/shimmer_card_placeholder.dart';
+import 'package:food_hydration_ai/ui/widgets/empty_state_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/foods_repo.dart';
@@ -30,7 +32,11 @@ class _FoodListScreenState extends State<FoodListScreen> {
         future: _foodsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: 5,
+              itemBuilder: (_, __) => const ShimmerCardPlaceholder(),
+            );
           }
 
           if (snapshot.hasError) {
@@ -44,7 +50,13 @@ class _FoodListScreenState extends State<FoodListScreen> {
 
           final foods = snapshot.data ?? [];
           if (foods.isEmpty) {
-            return const Center(child: Text('No foods found.'));
+            return const Center(
+              child: EmptyStateView(
+                title: 'No foods found.',
+                subtitle: 'Try scanning or adding a new food item.',
+                lottieAsset: 'assets/lottie/empty_generic.json',
+              ),
+            );
           }
 
           return ListView.separated(
