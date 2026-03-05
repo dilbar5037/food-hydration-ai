@@ -14,13 +14,22 @@ class SupabaseAutoRefreshGuard {
   final Connectivity _connectivity;
   final Duration _debounce;
   StreamSubscription<List<ConnectivityResult>>? _subscription;
+  StreamSubscription<AuthState>? _authStateSubscription;
   Timer? _debounceTimer;
+  bool _authListenerStarted = false;
 
   void start() {
     try {
       _subscription ??=
           _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
       _scheduleToggle(_connectivity.checkConnectivity());
+      
+      // Handles session expiration after app already opened
+      if (!_authListenerStarted) {
+        _authListenerStarted = true;
+        _authStateSubscription ??= Supabase.instance.client.auth.onAuthStateChange
+            .listen(_onAuthStateChanged);
+      }
     } catch (e) {
       debugPrint('SupabaseAutoRefreshGuard start failed: $e');
     }
@@ -32,6 +41,9 @@ class SupabaseAutoRefreshGuard {
       _debounceTimer = null;
       _subscription?.cancel();
       _subscription = null;
+      _authStateSubscription?.cancel();
+      _authStateSubscription = null;
+      _authListenerStarted = false;
     } catch (e) {
       debugPrint('SupabaseAutoRefreshGuard stop failed: $e');
     }
@@ -72,6 +84,33 @@ class SupabaseAutoRefreshGuard {
       });
     } catch (e) {
       debugPrint('SupabaseAutoRefreshGuard schedule failed: $e');
+    }
+  }
+
+  void _onAuthStateChanged(AuthState authState) async {
+    try {
+      // Validates session after resume, background, or token refresh failure
+      final supabase = Supabase.instance.client;
+      final session = supabase.auth.currentSession;
+      
+      if (session == null) {
+        return;
+      }
+      
+      try {
+        // Server validation: getUser() will throw if token is invalid
+        await supabase.auth.getUser();
+        // Token is valid, continue
+      } on AuthException catch (_) {
+        // Session invalid on server, clear it
+        try {
+          await supabase.auth.signOut();
+        } catch (_) {
+          // Silently ignore signout errors
+        }
+      }
+    } catch (e) {
+      debugPrint('SupabaseAutoRefreshGuard auth state change failed: $e');
     }
   }
 }
