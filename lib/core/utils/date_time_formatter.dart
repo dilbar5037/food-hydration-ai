@@ -19,16 +19,16 @@ class DateTimeFormatter {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
-    
+
     final day = local.day.toString().padLeft(2, '0');
     final month = months[local.month - 1];
     final year = local.year;
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');
     final period = local.hour >= 12 ? 'PM' : 'AM';
-    
+
     return '$day $month $year • ${hour.toString().padLeft(2, '0')}:$minute $period';
   }
 
@@ -39,7 +39,7 @@ class DateTimeFormatter {
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');
     final period = local.hour >= 12 ? 'PM' : 'AM';
-    
+
     return '${hour.toString().padLeft(2, '0')}:$minute $period';
   }
 
@@ -59,13 +59,13 @@ class DateTimeFormatter {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
-    
+
     final day = local.day.toString().padLeft(2, '0');
     final month = months[local.month - 1];
     final year = local.year;
-    
+
     return '$day $month $year';
   }
 }
