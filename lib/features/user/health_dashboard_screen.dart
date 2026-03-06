@@ -15,7 +15,7 @@ import '../../ui/theme/app_spacing.dart';
 import '../todos/ui/today_todos_screen.dart';
 import '../reports/ui/weekly_report_screen.dart';
 import '../settings/ui/water_reminder_settings_screen.dart';
-import '../todos/data/todo_service.dart';
+import '../todos/utils/daily_task_utils.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -105,18 +105,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   Future<void> _loadTodayTodosOnly() async {
-    try {
-      final todos = await TodoService().fetchTodayTodos();
-      if (!mounted) {
-        return;
-      }
-      final total = todos.length;
-      final done = todos.where((item) => item['is_done'] == true).length;
-      setState(() {
-        _todayTodosTotal = total;
-        _todayTodosDone = done;
-      });
-    } catch (_) {}
+    // Tasks are now computed from meal/water logs during _loadDashboard.
+    // Realtime events from user_todos are ignored.
   }
 
   Future<void> _loadDashboard() async {
@@ -152,6 +142,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     var missingProfile = false;
     var todayTodosTotal = 0;
     var todayTodosDone = 0;
+    var todayMeals = 0;
 
     try {
       final mealRows = await _client
@@ -203,6 +194,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           eatenAt.month,
           eatenAt.day,
         );
+        if (dayKey == startOfDay) {
+          todayMeals++;
+        }
         weeklyCalories[dayKey] =
             (weeklyCalories[dayKey] ?? 0) + totalCalories;
       }
@@ -264,10 +258,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     }
 
     try {
-      final todos = await TodoService().fetchTodayTodos();
-      todayTodosTotal = todos.length;
-      todayTodosDone =
-          todos.where((item) => item['is_done'] == true).length;
+      int customGoalMl = 2000;
+      if (weightKg != null) {
+        final factor = activityLevel == 'high'
+            ? 1.25
+            : activityLevel == 'medium'
+                ? 1.1
+                : 1.0;
+        customGoalMl = (weightKg * 35 * factor).round();
+      }
+      final tasks = buildDailyTasks(
+        mealsToday: todayMeals,
+        waterTodayMl: todayWater,
+        goalMl: customGoalMl,
+      );
+      todayTodosTotal = tasks.length;
+      todayTodosDone = tasks.where((t) => t.completed).length;
     } catch (_) {}
 
     if (!mounted) {
@@ -441,7 +447,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               backDrawRodData: BackgroundBarChartRodData(
                 show: true,
                 toY: roundedMaxY,
-                color: AppColors.border.withOpacity(0.25),
+                color: AppColors.border.withValues(alpha: 0.25),
               ),
             ),
           ],
@@ -471,7 +477,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: AppColors.border.withOpacity(0.25),
+                      color: AppColors.border.withValues(alpha: 0.25),
                       strokeWidth: 1,
                     ),
                   ),
@@ -597,7 +603,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     show: true,
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: AppColors.border.withOpacity(0.25),
+                      color: AppColors.border.withValues(alpha: 0.25),
                       strokeWidth: 1,
                     ),
                   ),
@@ -678,8 +684,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            AppColors.teal.withOpacity(0.25),
-                            AppColors.teal.withOpacity(0.0),
+                            AppColors.teal.withValues(alpha: 0.25),
+                            AppColors.teal.withValues(alpha: 0.0),
                           ],
                         ),
                       ),
@@ -828,7 +834,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               icon: Icons.check_circle_outline,
                               iconColor: AppColors.teal,
                               iconBackground:
-                                  AppColors.teal.withOpacity(0.12),
+                                  AppColors.teal.withValues(alpha: 0.12),
                               onTap: () async {
                                 await Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -847,7 +853,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               icon: Icons.bar_chart_outlined,
                               iconColor: AppColors.coral,
                               iconBackground:
-                                  AppColors.coral.withOpacity(0.12),
+                                  AppColors.coral.withValues(alpha: 0.12),
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -863,7 +869,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               icon: Icons.notifications_none,
                               iconColor: AppColors.purple,
                               iconBackground:
-                                  AppColors.purple.withOpacity(0.12),
+                                  AppColors.purple.withValues(alpha: 0.12),
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -922,7 +928,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                   value: compliance / 100,
                                   color: statusColor,
                                   backgroundColor:
-                                      statusColor.withOpacity(0.15),
+                                      statusColor.withValues(alpha: 0.15),
                                   minHeight: 8,
                                 ),
                                 const SizedBox(height: AppSpacing.lg),
@@ -1019,7 +1025,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                     vertical: AppSpacing.xs,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.12),
+                                    color: statusColor.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
