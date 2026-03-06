@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:food_hydration_ai/ui/feedback/empty_state_view.dart';
 
+import '../../core/utils/date_time_formatter.dart';
+
 class AdminReportsScreen extends StatefulWidget {
   const AdminReportsScreen({super.key});
 
@@ -225,10 +227,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
   String _formatDate(dynamic value) {
     if (value == null) return 'Unknown';
-    if (value is DateTime) return value.toLocal().toString();
+    if (value is DateTime) return DateTimeFormatter.formatDateTime(value);
     final parsed = DateTime.tryParse(value.toString());
     if (parsed == null) return 'Unknown';
-    return parsed.toLocal().toString();
+    return DateTimeFormatter.formatDateTime(parsed);
   }
 
   String _formatCalories(dynamic value) {
