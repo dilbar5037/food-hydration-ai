@@ -3,6 +3,8 @@ import 'package:food_hydration_ai/ui/widgets/app_loading_view.dart';
 import 'package:food_hydration_ai/ui/feedback/empty_state_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/utils/date_time_formatter.dart';
+
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
 
@@ -24,11 +26,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   String _formatCreatedAt(dynamic value) {
     if (value == null) return 'Unknown';
     if (value is DateTime) {
-      return value.toLocal().toString();
+      return DateTimeFormatter.formatDateTime(value);
     }
     final parsed = DateTime.tryParse(value.toString());
     if (parsed == null) return 'Unknown';
-    return parsed.toLocal().toString();
+    return DateTimeFormatter.formatDateTime(parsed);
   }
 
   Future<void> _loadUsers() async {
