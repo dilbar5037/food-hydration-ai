@@ -259,7 +259,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         AdminStatCard(title: 'Meals Today', value: '$mealsToday', icon: Icons.restaurant, color: AppColors.coral),
         AdminStatCard(title: 'Scans Today', value: '$scansToday', icon: Icons.camera_alt, color: AppColors.purple),
         AdminStatCard(title: 'Avg Water (ml)', value: avgWaterIntakeMl > 0 ? avgWaterIntakeMl.toStringAsFixed(0) : '—', icon: Icons.water_drop, color: const Color(0xFF06B6D4)),
-        AdminStatCard(title: 'Peak Hour', value: '$peakHour:00', icon: Icons.schedule, color: AppColors.pink),
+        AdminStatCard(title: 'Peak Hour', value: () { final h = peakHour % 12 == 0 ? 12 : peakHour % 12; final p = peakHour >= 12 ? 'PM' : 'AM'; return '$h:00 $p'; }(), icon: Icons.schedule, color: AppColors.pink),
       ],
     );
   }
