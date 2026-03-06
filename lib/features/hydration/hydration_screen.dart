@@ -6,6 +6,7 @@ import 'package:food_hydration_ai/ui/widgets/progress_widgets.dart';
 import 'package:food_hydration_ai/ui/feedback/success_feedback_overlay.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/utils/date_time_formatter.dart';
 import '../../ui/components/app_card.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
@@ -321,9 +322,7 @@ class _HydrationScreenState extends State<HydrationScreen>
   }
 
   String _formatTime(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    return DateTimeFormatter.formatTime(time);
   }
 
   Widget _buildHeroCard(double progress) {
